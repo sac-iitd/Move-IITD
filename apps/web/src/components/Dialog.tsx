@@ -22,18 +22,32 @@ export function Dialog({
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
+  const focusables = () =>
+    Array.from(
+      ref.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    );
+
+  // Move focus in only when the dialog opens. Re-running this on every
+  // keystroke (because onClose is a new function) was jumping focus to the
+  // first control, the "Myself" radio, after each digit in the phone field.
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
     const node = ref.current;
-    const focusables = () =>
-      Array.from(
-        node?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      );
     (focusables()[0] ?? node)?.focus();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflow;
+      previous?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !busy) {
         e.preventDefault();
@@ -53,13 +67,7 @@ export function Dialog({
       }
     };
     document.addEventListener('keydown', onKey);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = overflow;
-      previous?.focus?.();
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, busy, onClose]);
 
   if (!open) return null;
