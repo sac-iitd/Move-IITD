@@ -1,0 +1,32 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+# Environment and secrets — never commit
+.env
+.env.*
+!.env.example
+!apps/web/.env.production
+
+# Local databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Dev-only email output
+.mail/
+
+# Generated MySQL schema copy is committed; generated client is not
+node_modules/.prisma/
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local planning notes and agent skills — not part of the app
+plan.md
+.agents/
+skills-lock.json

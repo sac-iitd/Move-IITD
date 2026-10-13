@@ -1,0 +1,257 @@
+// GENERATED FILE — do not edit. Source: prisma/schema.prisma (npm run prisma:schema:mysql)
+// Primary schema (SQLite for local development and tests).
+//
+// The MySQL production schema at prisma/mysql/schema.prisma is GENERATED from
+// this file by `npm run prisma:schema:mysql`: the provider is swapped and any
+// ` <attrs>` trailing comment is appended to that field as native
+// type attributes. Edit this file only.
+//
+// Enumerated values are stored as strings (validated in code via
+// @iitd-bus/shared constants) so both providers share one definition.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  /// Identity provider key, e.g. "kebros" (IIT Delhi OAuth) or "dev-mock".
+  authProvider    String
+  /// Stable external identity: the IIT Delhi OAuth `user_id` (Kerberos ID).
+  providerSubject String
+  name            String
+  email           String?
+  /// Provider-supplied category (e.g. student/faculty/staff), used for eligibility checks.
+  category        String?
+  role            String    @default("USER")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLoginAt     DateTime?
+
+  sessions       Session[]
+  bookings       Booking[]  @relation("BookingUser")
+  cancellations  Booking[]  @relation("BookingCancelledBy")
+  auditLogs      AuditLog[]
+  cancelledTrips Trip[]
+  closures       ServiceClosure[]
+  blocks         UserBlock[]      @relation("BlockedUser")
+  blocksCreated  UserBlock[]      @relation("BlockCreatedBy")
+  blocksRevoked  UserBlock[]      @relation("BlockRevokedBy")
+
+  @@unique([authProvider, providerSubject])
+  @@index([email])
+}
+
+model Session {
+  /// SHA-256 hash of the opaque session token held in the HTTP-only cookie.
+  id         String   @id
+  userId     String
+  csrfToken  String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ServiceTemplate {
+  id                    String   @id @default(cuid())
+  /// Stable seed key, e.g. "BUS2-1330-SNP-DEL".
+  code                  String   @unique
+  serviceLabel          String
+  capacity              Int
+  origin                String
+  destination           String
+  /// Local (Asia/Kolkata) wall-clock time, "HH:mm".
+  departureTime         String
+  /// True while the departure time awaits institutional confirmation.
+  timeProvisional       Boolean  @default(false)
+  active                Boolean  @default(true)
+  bookingOpenDaysBefore Int      @default(7)
+  bookingOpenTime       String   @default("00:00")
+  bookingCloseTime      String   @default("16:00")
+  cancellationCloseTime String   @default("14:00")
+  cutoffRule            String   @default("PREVIOUS_CALENDAR_DAY")
+  /// First travel date (YYYY-MM-DD) for which trips are generated.
+  effectiveFrom         String
+  /// Last travel date (YYYY-MM-DD), inclusive. Null = open-ended.
+  effectiveUntil        String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  trips Trip[]
+}
+
+model Trip {
+  id                   String    @id @default(cuid())
+  serviceTemplateId    String?
+  // Snapshot of the schedule at generation time; template edits do not rewrite these.
+  serviceLabel         String
+  /// Travel date in Asia/Kolkata, "YYYY-MM-DD".
+  travelDate           String
+  origin               String
+  destination          String
+  departureTime        String
+  departureAt          DateTime
+  capacity             Int
+  /// Confirmed bookings. Maintained transactionally; guarded by `bookedCount < capacity`.
+  bookedCount          Int       @default(0)
+  status               String    @default("SCHEDULED")
+  timeProvisional      Boolean   @default(false)
+  /// One-off trip created by an admin (any date, no template). Not bound by the Mon–Fri rule.
+  isSpecial            Boolean   @default(false)
+  bookingOpensAt       DateTime
+  bookingClosesAt      DateTime
+  cancellationClosesAt DateTime
+  cancellationReason   String? @db.VarChar(500)
+  cancelledAt          DateTime?
+  cancelledById        String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  template      ServiceTemplate?     @relation(fields: [serviceTemplateId], references: [id], onDelete: SetNull)
+  cancelledBy   User?                @relation(fields: [cancelledById], references: [id], onDelete: SetNull)
+  bookings      Booking[]
+  notifications NotificationOutbox[]
+
+  @@unique([serviceTemplateId, travelDate])
+  @@index([travelDate])
+  @@index([departureAt])
+  @@index([status])
+}
+
+model Booking {
+  id                 String    @id @default(cuid())
+  bookingReference   String    @unique
+  userId             String
+  tripId             String
+  /// CONFIRMED (holds a seat), WAITLISTED (queued for a seat) or CANCELLED.
+  status             String    @default("CONFIRMED")
+  /// Seat slot "SEAT1" or "SEAT2" while active (confirmed or waitlisted); set to the booking id
+  /// once cancelled. With the unique constraint below this caps every account at 2 active
+  /// bookings per trip, even under concurrent requests, while keeping cancelled rows as history.
+  activeSlot         String    @default("SEAT1")
+  /// "SELF" while an active booking is for the account holder; the booking id otherwise.
+  /// Unique per (user, trip) so a person cannot book themselves twice on one trip.
+  selfSlot           String
+  /// SELF (account holder travels) or GUEST (booked for someone else).
+  passengerType      String    @default("SELF")
+  passengerName      String
+  passengerEmail     String?
+  /// Emergency contact phone (required). Erased after PII_RETENTION_DAYS.
+  phone              String?
+  /// Guest's own phone (optional). Erased after PII_RETENTION_DAYS.
+  guestPhone         String?
+  /// ACADEMIC, ADMINISTRATIVE or OTHER.
+  purpose            String
+  purposeDetail      String? @db.VarChar(200)
+  /// IITD_ID (self; number = Kerberos id), AADHAAR or PAN (guests).
+  idType             String
+  /// Guest ID number, AES-256-GCM encrypted. Erased after PII_RETENTION_DAYS.
+  idNumberEnc        String? @db.VarChar(512)
+  piiPurgedAt        DateTime?
+  idempotencyKey     String?
+  bookedAt           DateTime  @default(now())
+  cancelledAt        DateTime?
+  cancellationReason String? @db.VarChar(500)
+  cancelledById      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user          User                 @relation("BookingUser", fields: [userId], references: [id], onDelete: Restrict)
+  trip          Trip                 @relation(fields: [tripId], references: [id], onDelete: Restrict)
+  cancelledBy   User?                @relation("BookingCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  notifications NotificationOutbox[]
+
+  @@unique([userId, tripId, activeSlot])
+  @@unique([userId, tripId, selfSlot])
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+  @@index([tripId])
+  @@index([status])
+  @@index([tripId, status, createdAt])
+}
+
+model NotificationOutbox {
+  id            String    @id @default(cuid())
+  type          String
+  /// Logical identity of the message (e.g. "BOOKING_CONFIRMATION:<bookingId>") so it is enqueued once.
+  dedupeKey     String    @unique
+  recipient     String
+  bookingId     String?
+  tripId        String?
+  /// Minimal, non-sensitive JSON used to render the email.
+  payload       String @db.Text
+  status        String    @default("PENDING")
+  attemptCount  Int       @default(0)
+  lastError     String? @db.VarChar(500)
+  nextAttemptAt DateTime? @default(now())
+  /// Claim lease used while a worker is sending (status SENDING).
+  lockedUntil   DateTime?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  trip    Trip?    @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([bookingId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  targetType  String?
+  targetId    String?
+  /// Sanitized JSON. Never contains tokens, cookies or secrets.
+  metadata    String? @db.Text
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([actorUserId])
+  @@index([action])
+}
+
+/// A date with no regular service (e.g. a national holiday). Regular trips on this date are
+/// cancelled when the closure is created and are never generated while it exists.
+model ServiceClosure {
+  id          String   @id @default(cuid())
+  /// Asia/Kolkata calendar date, "YYYY-MM-DD".
+  date        String   @unique
+  reason      String @db.VarChar(500)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+/// Temporarily stops a user from booking (dates are Asia/Kolkata, inclusive).
+model UserBlock {
+  id          String    @id @default(cuid())
+  userId      String
+  startsOn    String
+  endsOn      String
+  reason      String @db.VarChar(500)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  revokedById String?
+
+  user      User  @relation("BlockedUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User? @relation("BlockCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  revokedBy User? @relation("BlockRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, endsOn])
+}

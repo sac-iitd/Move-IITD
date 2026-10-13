@@ -1,0 +1,177 @@
+@import 'tailwindcss';
+
+/* Brand palette derived from the Student Affairs Council crest: deep maroon-brown + gold. */
+@theme {
+  --color-brand-50: #fbf6ee;
+  --color-brand-100: #f3e6cc;
+  --color-brand-200: #e7cc97;
+  --color-brand-300: #d9ae5c;
+  --color-brand-400: #c9963a;
+  --color-brand-500: #b07d24;
+  --color-brand-600: #8f621a;
+  --color-brand-700: #6e4a16;
+  --color-ink-700: #3d2420;
+  --color-ink-800: #2f1b18;
+  --color-ink-900: #2a1714;
+  --color-ink-950: #1b0e0c;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-brand-50 text-ink-900 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+@layer components {
+  .btn-primary,
+  .btn-gold,
+  .btn-secondary,
+  .btn-danger {
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-ink-900 text-brand-100 hover:bg-ink-700;
+  }
+  .btn-gold {
+    @apply bg-brand-400 text-ink-950 hover:bg-brand-300;
+  }
+  .btn-secondary {
+    @apply border border-ink-900/20 bg-white text-ink-900 hover:bg-brand-100;
+  }
+  .btn-danger {
+    @apply bg-red-700 text-white hover:bg-red-800;
+  }
+  .card {
+    @apply rounded-xl border border-ink-900/10 bg-white shadow-sm;
+  }
+  .input {
+    @apply min-h-11 w-full rounded-lg border border-ink-900/25 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-900/45;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-ink-800;
+  }
+}
+
+/* ---------- Motion ---------- */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: -400px 0;
+  }
+  to {
+    background-position: 400px 0;
+  }
+}
+@keyframes logo-pulse {
+  50% {
+    transform: scale(1.06);
+    opacity: 0.85;
+  }
+}
+
+@layer components {
+  /* Applied to the routed page container; keyed by pathname so it replays on navigation. */
+  .page-enter {
+    animation: page-enter 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .fade-in {
+    animation: fade-in 200ms ease-out both;
+  }
+  .pop-in {
+    animation: pop-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #f3e6cc55 0%, #ffffff 50%, #f3e6cc55 100%) 0 0 / 800px 100%;
+    animation: shimmer 1.3s linear infinite;
+  }
+  .logo-pulse {
+    animation: logo-pulse 1.6s ease-in-out infinite;
+  }
+  /* Cards rise gently in sequence within a list. */
+  .trip-card {
+    animation: page-enter 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    transition:
+      box-shadow 150ms ease,
+      transform 150ms ease;
+  }
+  .trip-card:hover {
+    box-shadow: 0 6px 18px -8px rgb(42 23 20 / 0.25);
+  }
+  li:nth-child(2) > .trip-card,
+  .trip-card:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .trip-card:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .trip-card:nth-child(n + 4) {
+    animation-delay: 110ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ---------- Print (driver manifest) ---------- */
+@media print {
+  .no-print,
+  header,
+  footer {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .print-table th,
+  .print-table td {
+    border: 1px solid #000 !important;
+    padding: 6px 8px !important;
+    font-size: 11pt;
+  }
+}

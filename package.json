@@ -1,0 +1,59 @@
+{
+  "name": "iitd-bus-booking",
+  "private": true,
+  "version": "0.1.0",
+  "description": "IIT Delhi – Sonipat campus bus booking system",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev -w @iitd-bus/api\" \"npm run dev -w @iitd-bus/web\"",
+    "dev:api": "npm run dev -w @iitd-bus/api",
+    "dev:web": "npm run dev -w @iitd-bus/web",
+    "build": "npm run build -w @iitd-bus/api && npm run build -w @iitd-bus/web",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p scripts/tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "prisma:generate": "prisma generate",
+    "prisma:schema:mysql": "tsx scripts/build-mysql-schema.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:deploy:mysql": "npm run prisma:generate:mysql && prisma migrate deploy --schema prisma/mysql/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts",
+    "trips:generate": "tsx scripts/generate-trips.ts",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "postinstall": "prisma generate",
+    "email:verify": "tsx scripts/verify-smtp.ts",
+    "prisma:generate:mysql": "npm run prisma:schema:mysql && prisma generate --schema prisma/mysql/schema.prisma",
+    "test:mysql": "tsx scripts/test-mysql.ts"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@prisma/client": "^6.19.3",
+    "@types/node": "^22.20.5",
+    "concurrently": "^9.2.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.5.0",
+    "prettier": "^3.9.10",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node@^4.40.0"
+  }
+}
