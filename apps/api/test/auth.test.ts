@@ -274,7 +274,10 @@ describe('sessions', () => {
     expect(noToken.body.error.code).toBe('CSRF_INVALID');
 
     const ok = await s.agent.post('/api/v1/auth/logout').set('X-CSRF-Token', s.csrf);
-    expect(ok.status).toBe(204);
+    expect(ok.status).toBe(200);
+    const cleared = String(ok.headers['set-cookie']);
+    expect(cleared).toMatch(/bus_sid=/);
+    expect(cleared).toMatch(/Expires=Thu, 01 Jan 1970/i);
     expect(await db.session.count()).toBe(0);
     expect((await s.agent.get('/api/v1/auth/me')).status).toBe(401);
   });

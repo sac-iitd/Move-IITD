@@ -1,9 +1,15 @@
 import { useState, type ReactNode } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { OfflineBanner } from './Feedback';
 
 const logoSrc = `${import.meta.env.BASE_URL}sac-logo.png`;
+
+/** Full load of the public page so no signed-in React state survives. */
+function goToSignedOutPage() {
+  const base = import.meta.env.BASE_URL || '/';
+  window.location.assign(`${base.endsWith('/') ? base : `${base}/`}?signedOut=1`);
+}
 
 function NavItem({ to, children, end }: { to: string; children: ReactNode; end?: boolean }) {
   return (
@@ -23,8 +29,11 @@ function NavItem({ to, children, end }: { to: string; children: ReactNode; end?:
 
 export function Header() {
   const { user, logout, login } = useAuth();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const signOut = async () => {
+    await logout();
+    goToSignedOutPage();
+  };
   const isAdmin = user?.role === 'ADMIN';
 
   const nav = user && (
@@ -62,10 +71,7 @@ export function Header() {
               <button
                 type="button"
                 className="btn-gold min-h-9 px-3 py-1"
-                onClick={async () => {
-                  await logout();
-                  navigate('/?signedOut=1');
-                }}
+                onClick={() => void signOut()}
               >
                 Sign out
               </button>
@@ -105,10 +111,9 @@ export function Header() {
                 <button
                   type="button"
                   className="btn-gold"
-                  onClick={async () => {
+                  onClick={() => {
                     setOpen(false);
-                    await logout();
-                    navigate('/?signedOut=1');
+                    void signOut();
                   }}
                 >
                   Sign out

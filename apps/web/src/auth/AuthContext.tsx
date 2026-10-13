@@ -58,8 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api('/auth/logout', { method: 'POST' });
     } finally {
       setCsrfToken(null);
-      qc.clear();
+      // Drop the signed-in cache in place. queryClient.clear() detaches this
+      // query and a later refetch paints the old name over a dead session.
+      await qc.cancelQueries();
       qc.setQueryData(['me'], { user: null, expired: false, lastPhone: null, block: null });
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
     }
   }, [qc]);
 

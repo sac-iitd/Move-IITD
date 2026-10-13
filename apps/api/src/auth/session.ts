@@ -54,7 +54,12 @@ export function setSessionCookie(res: Response, env: Env, token: string, expires
 }
 
 export function clearSessionCookie(res: Response, env: Env) {
-  res.clearCookie(sessionCookieName(env), baseCookieOptions(env));
+  const name = sessionCookieName(env);
+  const options = baseCookieOptions(env);
+  // __Host- cookies are only replaced when Path=/ and Secure match and Domain is absent.
+  // Set an expired cookie explicitly; clearCookie alone is dropped on some 204 responses.
+  res.cookie(name, '', { ...options, maxAge: 0, expires: new Date(0) });
+  res.clearCookie(name, options);
 }
 
 /** Resolves the session cookie (if any) to a user. Never throws for bad cookies. */

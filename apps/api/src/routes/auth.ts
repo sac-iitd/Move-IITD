@@ -119,7 +119,8 @@ export function authRouter(ctx: AppContext) {
       await ctx.prisma.session.deleteMany({ where: { id: req.auth.session.id } });
     }
     clearSessionCookie(res, env);
-    res.status(204).end();
+    // 200, not 204: some proxies drop Set-Cookie on an empty 204, so the browser stays signed in.
+    res.status(200).json({ ok: true });
   });
 
   r.get('/me', requireAuth, async (req, res) => {
