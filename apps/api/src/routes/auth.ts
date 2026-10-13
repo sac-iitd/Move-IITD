@@ -43,6 +43,11 @@ export function authRouter(ctx: AppContext) {
       exp: ctx.now().getTime() + STATE_TTL_MS,
     });
     res.cookie(oauthCookieName(env), value, { ...baseCookieOptions(env), maxAge: STATE_TTL_MS });
+    // IITD rejects authorize.php unless the browser's Referer starts with the
+    // registered Server URI (https://sac.iitd.ac.in). The API's default
+    // Referrer-Policy is no-referrer, which strips it on this redirect and
+    // sends the user back to the SAC homepage instead of the Kerberos login.
+    res.set('Referrer-Policy', 'origin');
     res.redirect(302, ctx.authProvider.authorizationUrl(state));
   });
 

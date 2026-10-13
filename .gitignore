@@ -4,6 +4,8 @@ coverage/
 *.log
 
 # Environment and secrets — never commit
+# Live production values: /var/www/sac/https/moveiitd/.env on the SAC server.
+# Operator copy on a deploy machine: .env.production.local (matched by .env.*).
 .env
 .env.*
 !.env.example

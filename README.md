@@ -134,6 +134,11 @@ server POSTs `access_token` to `resource.php` → `user_id, mail, name, category
 `state` is bound to a 10-minute signed HTTP-only cookie; the access token is never stored or logged.
 Only `user_id` (identity key), name, email and category are kept.
 
+IITD only shows the Kerberos page when the browser's `Referer` starts with the registered
+Server URI (`https://sac.iitd.ac.in`). The sign-in redirect therefore sends
+`Referrer-Policy: origin`. Without that header, `authorize.php` sends the user to the SAC
+homepage instead of the login form.
+
 ## 5. Configuration (`.env` on the server)
 
 `.env.example` is pre-filled for production. Fill these five placeholders:
@@ -145,6 +150,11 @@ Only `user_id` (identity key), name, email and category are kept.
 | `KEBROS_CLIENT_SECRET`                               | from the sysadm email                                                                           |
 | `SMTP_USER` / `SMTP_PASSWORD` / `EMAIL_FROM_ADDRESS` | the IITD mailbox that sends the mails (any mailbox; usually From = that mailbox)                |
 | `ID_ENCRYPTION_KEY`                                  | another random secret — **keep a safe copy**; without it stored guest ID numbers cannot be read |
+
+The live file on the SAC server is `/var/www/sac/https/moveiitd/.env` (mode `600`, not in git).
+People deploying from this checkout also keep a copy at `.env.production.local`, which `.gitignore`
+already excludes. That is the file to open for `ID_ENCRYPTION_KEY` and the other server secrets.
+Do not commit it.
 
 The server refuses to start with missing/invalid settings and names the variable (never the value).
 

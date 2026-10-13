@@ -117,6 +117,7 @@ describe('sign-in flow', () => {
     const res = await request(t.app).get('/api/v1/auth/login');
     expect(res.status).toBe(302);
     expect(res.headers.location).toMatch(/^\/api\/v1\/auth\/dev-mock\/authorize\?state=/);
+    expect(res.headers['referrer-policy']).toBe('origin');
     const cookie = res.headers['set-cookie']![0]!;
     expect(cookie).toMatch(/^bus_oauth=/);
     expect(cookie).toMatch(/HttpOnly/i);

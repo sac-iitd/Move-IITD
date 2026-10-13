@@ -37,7 +37,8 @@ async function main() {
   }
 
   const app = createApp(ctx);
-  const server = app.listen(env.PORT, () => {
+  // Loopback only: Apache on this machine proxies /MoveIITD/api here.
+  const server = app.listen(env.PORT, '127.0.0.1', () => {
     logger.info({ port: env.PORT, env: env.NODE_ENV, auth: env.AUTH_PROVIDER }, 'API listening');
   });
   const jobs = env.ENABLE_BACKGROUND_JOBS ? startBackgroundJobs(ctx) : undefined;
