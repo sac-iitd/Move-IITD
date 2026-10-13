@@ -92,7 +92,7 @@ export async function patchTrip(
   if (patch.departureTime && patch.departureTime !== trip.departureTime && trip.bookedCount > 0) {
     throw new HttpError(
       'CONFLICT',
-      'This trip already has bookings. Changing its time would silently affect passengers — cancel the trip (which notifies them) instead.',
+      'This trip already has bookings. Changing its time would silently affect passengers. Cancel the trip (which notifies them) instead.',
     );
   }
   const opens = patch.bookingOpensAt ? new Date(patch.bookingOpensAt) : trip.bookingOpensAt;

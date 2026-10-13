@@ -63,7 +63,7 @@ describe('driver manifest', () => {
       { route: '/admin/trips/trip1/manifest' },
     );
     expect(
-      await screen.findByRole('heading', { name: /Passenger list — VAN/ }),
+      await screen.findByRole('heading', { name: /Passenger list: VAN/ }),
     ).toBeInTheDocument();
     const table = screen.getByRole('table', { name: 'Confirmed passengers' });
     expect(within(table).getByText('ABCDE1234F')).toBeInTheDocument();

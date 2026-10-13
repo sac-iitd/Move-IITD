@@ -35,7 +35,7 @@ export function LoginPage() {
       )}
       <div className="card space-y-4 p-6">
         <p className="text-sm">
-          Use your IIT Delhi Kerberos (KEBROS) account. You'll be sent to the institute sign-in page
+          Use your IIT Delhi Kerberos account. You'll be sent to the institute sign-in page
           and brought back here afterwards.
         </p>
         <button
@@ -43,7 +43,7 @@ export function LoginPage() {
           className="btn-primary w-full text-base"
           onClick={() => login(returnTo)}
         >
-          Sign in with KEBROS
+          Sign in with Kerberos
         </button>
       </div>
     </div>

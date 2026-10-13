@@ -162,7 +162,7 @@ export function BookingsPage() {
                     </p>
                     <p className="text-xs text-ink-800">
                       {b.passengerType === 'GUEST' ? 'Booked by ' : ''}
-                      {b.userName} · {b.userEmail ?? '—'} · {b.userSubject}
+                      {b.userName} · {b.userEmail ?? '-'} · {b.userSubject}
                     </p>
                     <p className="text-xs text-ink-800">
                       {PURPOSE_LABELS[b.purpose]}
@@ -170,7 +170,7 @@ export function BookingsPage() {
                     </p>
                   </Td>
                   <Td className="text-xs">
-                    <p className="tabular-nums">{b.phone ?? '—'}</p>
+                    <p className="tabular-nums">{b.phone ?? '-'}</p>
                     <p>
                       {ID_TYPE_LABELS[b.idType]}:{' '}
                       <span className="font-mono">{b.idNumber ?? '(erased)'}</span>

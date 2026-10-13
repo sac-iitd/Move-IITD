@@ -93,7 +93,7 @@ export function AuditLogPage() {
                   </Td>
                   <Td className="font-mono text-xs">{a.action}</Td>
                   <Td className="text-xs">
-                    {a.targetType ? `${a.targetType} ${a.targetId ?? ''}` : '—'}
+                    {a.targetType ? `${a.targetType} ${a.targetId ?? ''}` : '-'}
                   </Td>
                   <Td className="text-xs">
                     {a.metadata != null && (

@@ -72,7 +72,7 @@ export function CancelBookingDialog({
       }
     >
       <p>
-        <span className="font-mono font-semibold">{booking.reference}</span> —{' '}
+        <span className="font-mono font-semibold">{booking.reference}</span>:{' '}
         {formatTravelDate(booking.trip.travelDate)}, {formatWallTime(booking.trip.departureTime)},{' '}
         {routeText(booking.trip)}
       </p>

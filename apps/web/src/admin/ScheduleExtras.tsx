@@ -116,7 +116,7 @@ export function ClosuresSection() {
               className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm"
             >
               <span>
-                <strong>{formatTravelDate(c.date)}</strong> — {c.reason}
+                <strong>{formatTravelDate(c.date)}</strong>: {c.reason}
               </span>
               <button
                 type="button"

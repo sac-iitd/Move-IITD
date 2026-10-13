@@ -91,8 +91,8 @@ export function NotificationsPage() {
                 <tr key={n.id} className="border-t border-ink-900/10">
                   <Td className="text-xs">{formatIst(n.createdAt)}</Td>
                   <Td>{TYPE_LABELS[n.type]}</Td>
-                  <Td className="text-xs">{n.recipient || '—'}</Td>
-                  <Td className="font-mono text-xs">{n.bookingReference ?? '—'}</Td>
+                  <Td className="text-xs">{n.recipient || '-'}</Td>
+                  <Td className="font-mono text-xs">{n.bookingReference ?? '-'}</Td>
                   <Td>
                     <NotificationStatusBadge status={n.status} />
                   </Td>

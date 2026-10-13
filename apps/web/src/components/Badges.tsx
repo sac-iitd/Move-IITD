@@ -53,7 +53,7 @@ export function TripStatusBadge({ status }: { status: TripStatus }) {
 }
 
 export function NotificationStatusBadge({ status }: { status: NotificationStatus | null }) {
-  if (!status) return <span className="text-xs text-ink-800">—</span>;
+  if (!status) return <span className="text-xs text-ink-800">-</span>;
   const map: Record<NotificationStatus, [string, string]> = {
     PENDING: ['bg-amber-100 text-amber-900', 'Email pending'],
     SENDING: ['bg-amber-100 text-amber-900', 'Sending'],

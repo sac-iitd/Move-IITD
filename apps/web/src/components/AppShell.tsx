@@ -78,7 +78,7 @@ export function Header() {
             </>
           ) : (
             <button type="button" className="btn-gold min-h-9 px-3 py-1" onClick={() => login()}>
-              Sign in with KEBROS
+              Sign in with Kerberos
             </button>
           )}
         </div>
@@ -121,7 +121,7 @@ export function Header() {
               </>
             ) : (
               <button type="button" className="btn-gold w-full" onClick={() => login()}>
-                Sign in with KEBROS
+                Sign in with Kerberos
               </button>
             )}
           </div>

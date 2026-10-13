@@ -82,7 +82,7 @@ function layout(
     ),
     ...notes.map((n) => `- ${n}`),
     `${link.label}: ${link.href}`,
-    '— MoveIITD · Student Affairs Council, IIT Delhi\nThis is an automated message. Please do not reply with passwords or personal documents.',
+    'MoveIITD, Student Affairs Council, IIT Delhi\nThis is an automated message. Please do not reply with passwords or personal documents.',
   ].join('\n\n');
 
   const sectionHtml = sections
@@ -140,7 +140,7 @@ export function renderEmail(
         `${p.passenger?.bookedBy ?? 'An IIT Delhi member'} booked this trip for you. Contact them for any changes.`,
       ]
     : [];
-  const idNote = `Please bring your valid ID proof (${ID_TYPE_LABELS[(p.passenger?.idType ?? 'IITD_ID') as IdType]}) — it will be checked when boarding.`;
+  const idNote = `Please bring your valid ID proof (${ID_TYPE_LABELS[(p.passenger?.idType ?? 'IITD_ID') as IdType]}). It will be checked when boarding.`;
   const cancelNote = p.cancellationDeadline
     ? `Plans changed? Cancel from "My bookings" before ${formatIst(p.cancellationDeadline)} IST so someone on the waiting list gets the seat.`
     : 'Plans changed? Cancel from "My bookings" before 2:00 PM IST on the day before travel.';
@@ -178,7 +178,7 @@ export function renderEmail(
     }
     case 'WAITLIST_PROMOTED': {
       const { text, html } = layout(
-        'Good news — you got a seat',
+        'Good news: you got a seat',
         `${greeting} a seat became available and your waiting-list booking is now CONFIRMED.`,
         sections(),
         [
@@ -232,8 +232,8 @@ export function renderEmail(
     }
     case 'USER_BLOCKED': {
       const rows: Rows = [
-        ['Blocked from', p.blockedFrom ? formatTravelDate(p.blockedFrom) : '—'],
-        ['Blocked until', p.blockedUntil ? formatTravelDate(p.blockedUntil) : '—'],
+        ['Blocked from', p.blockedFrom ? formatTravelDate(p.blockedFrom) : '-'],
+        ['Blocked until', p.blockedUntil ? formatTravelDate(p.blockedUntil) : '-'],
       ];
       if (p.reason) rows.push(['Reason', p.reason]);
       const { text, html } = layout(

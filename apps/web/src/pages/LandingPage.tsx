@@ -33,16 +33,16 @@ export function LandingPage() {
               Student Affairs Council · IIT Delhi
             </p>
             <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-4xl">
-              MoveIITD — Delhi ↔ Sonipat campus bus
+              MoveIITD: Delhi ↔ Sonipat campus bus
             </h1>
             <p className="mt-3 max-w-xl text-brand-100/90">
               Reserve a seat on the shuttle between IIT Delhi's Delhi campus and the Sonipat campus.
-              Buses run Monday to Friday. Sign in with your IIT Delhi Kerberos (KEBROS) account to
+              Buses run Monday to Friday. Sign in with your IIT Delhi Kerberos account to
               book.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button type="button" className="btn-gold px-6 text-base" onClick={() => login()}>
-                Sign in with KEBROS
+                Sign in with Kerberos
               </button>
             </div>
           </div>
@@ -137,7 +137,7 @@ export function LandingPage() {
         <div className="card p-5">
           <h3 className="font-bold">Seats, guests &amp; ID</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            <li>Up to 2 seats per person per trip — for yourself and/or a guest.</li>
+            <li>Up to 2 seats per person per trip, for yourself and/or a guest.</li>
             <li>Guests need an Aadhaar or PAN number and must carry that ID.</li>
             <li>Carry your IIT Delhi ID card. IDs are checked when boarding.</li>
             <li>You get a booking reference and a confirmation email.</li>
@@ -148,7 +148,7 @@ export function LandingPage() {
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
             <li>Cancel online until 2:00 PM the day before travel.</li>
             <li>
-              Full trip? Join the waiting list — the first person gets the next free seat
+              Full trip? Join the waiting list. The first person gets the next free seat
               automatically.
             </li>
             <li>

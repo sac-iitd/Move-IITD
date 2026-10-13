@@ -188,11 +188,11 @@ export function UsersPage() {
                   <tr key={u.id} className="border-t border-ink-900/10">
                     <Td className="font-medium">{u.name}</Td>
                     <Td className="text-xs">
-                      {u.email ?? '—'}
+                      {u.email ?? '-'}
                       <span className="block text-ink-800">{u.subject}</span>
                     </Td>
                     <Td>{u.role === 'ADMIN' ? 'Admin' : 'User'}</Td>
-                    <Td className="text-xs">{u.lastLoginAt ? formatIst(u.lastLoginAt) : '—'}</Td>
+                    <Td className="text-xs">{u.lastLoginAt ? formatIst(u.lastLoginAt) : '-'}</Td>
                     <Td className="text-xs">
                       {u.activeBlock ? (
                         <span className="font-semibold text-red-800">
@@ -269,7 +269,7 @@ export function UsersPage() {
                     {formatTravelDate(b.startsOn)} – {formatTravelDate(b.endsOn)}
                   </Td>
                   <Td className="text-xs">{b.reason}</Td>
-                  <Td className="text-xs">{b.createdByName ?? '—'}</Td>
+                  <Td className="text-xs">{b.createdByName ?? '-'}</Td>
                   <Td className="text-xs">
                     {b.revokedAt
                       ? `Lifted ${formatIst(b.revokedAt)}`

@@ -7,7 +7,7 @@ import { formatIst, formatTravelDate, formatWallTime, routeText } from '../lib/f
 
 const logoSrc = `${import.meta.env.BASE_URL}sac-logo.png`;
 
-/** Passenger list for the driver — printable on A4 or downloadable as CSV. */
+/** Passenger list for the driver - printable on A4 or downloadable as CSV. */
 export function ManifestPage() {
   const { tripId = '' } = useParams();
   const q = useQuery({
@@ -44,7 +44,7 @@ export function ManifestPage() {
         <div className="flex items-center gap-4 border-b border-ink-900/15 pb-3">
           <img src={logoSrc} alt="" className="h-14 w-14" width={56} height={56} />
           <div>
-            <h1 className="text-xl font-bold">Passenger list — {t.serviceLabel}</h1>
+            <h1 className="text-xl font-bold">Passenger list: {t.serviceLabel}</h1>
             <p className="text-sm">
               {formatTravelDate(t.travelDate)} · {formatWallTime(t.departureTime)} · {routeText(t)}{' '}
               · {DIRECTION_LABELS[t.direction]}
@@ -98,14 +98,14 @@ export function ManifestPage() {
                       </span>
                     </td>
                     <td className="border border-ink-900/15 px-2 py-2 tabular-nums">
-                      {p.phone ?? '—'}
+                      {p.phone ?? '-'}
                     </td>
                     <td className="border border-ink-900/15 px-2 py-2 text-xs">{p.purpose}</td>
                     <td className="border border-ink-900/15 px-2 py-2">
                       {ID_TYPE_LABELS[p.idType]}
                     </td>
                     <td className="border border-ink-900/15 px-2 py-2 font-mono">
-                      {p.idNumber ?? '—'}
+                      {p.idNumber ?? '-'}
                     </td>
                     <td className="w-28 border border-ink-900/15 px-2 py-2" />
                   </tr>
@@ -121,7 +121,7 @@ export function ManifestPage() {
             <ol className="mt-1 list-decimal pl-5 text-sm">
               {m.waitlist.map((w) => (
                 <li key={w.reference}>
-                  {w.name} · {w.phone ?? '—'} ·{' '}
+                  {w.name} · {w.phone ?? '-'} ·{' '}
                   <span className="font-mono text-xs">{w.reference}</span>
                 </li>
               ))}
@@ -129,7 +129,7 @@ export function ManifestPage() {
           </div>
         )}
         <p className="mt-6 text-[11px] text-ink-800">
-          Confidential — contains personal ID numbers. Hand back to the SAC office after the trip.
+          Confidential. Contains personal ID numbers. Hand back to the SAC office after the trip.
         </p>
       </div>
     </div>

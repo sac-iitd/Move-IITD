@@ -236,7 +236,7 @@ describe('authentication states', () => {
     );
     expect(await screen.findByText('Session expired')).toBeInTheDocument();
     expect(screen.queryByText('secret')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign in with KEBROS' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in with Kerberos' })).toBeInTheDocument();
   });
 
   it('shows provider errors on the sign-in page', async () => {
