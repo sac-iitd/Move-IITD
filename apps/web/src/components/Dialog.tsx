@@ -86,7 +86,7 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative w-full max-w-md rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl"
+        className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-6 shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
       >
         <h2 id={titleId} className="text-lg font-bold text-ink-900">
           {title}
