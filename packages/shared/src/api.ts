@@ -589,6 +589,26 @@ export const adminUsersQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });
 
+/** One trip a person booked, as shown in the admin travel history. */
+export interface UserTravelEntryDto {
+  reference: string;
+  status: BookingStatus;
+  travelDate: string;
+  departureTime: string;
+  direction: Direction;
+  origin: Campus;
+  destination: Campus;
+  serviceLabel: string;
+  passengerName: string;
+  passengerType: PassengerType;
+}
+
+export interface UserTravelHistoryDto {
+  /** First travel date included (6 months before today, IST). */
+  from: string;
+  entries: UserTravelEntryDto[];
+}
+
 export interface AdminUserDto {
   id: string;
   name: string;

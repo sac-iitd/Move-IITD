@@ -23,6 +23,7 @@ import {
   type PassengerType,
   type Purpose,
   type UserBlockDto,
+  type UserTravelHistoryDto,
   adminAnalyticsQuerySchema,
   weekdayOf,
   type AnalyticsResponse,
@@ -812,6 +813,48 @@ export function adminRouter(ctx: AppContext) {
       page,
       pageSize,
       total,
+    };
+    res.json(body);
+  });
+
+  /** Travel date 6 calendar months before an IST date, e.g. 2026-10-14 → 2026-04-14. */
+  function sixMonthsBefore(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const dt = new Date(Date.UTC(y!, m! - 1 - 6, d));
+    const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getUTCDate()).padStart(2, '0');
+    return `${dt.getUTCFullYear()}-${mm}-${dd}`;
+  }
+
+  /** Every booking whose trip is within the last 6 months, including upcoming ones. */
+  r.get('/users/:userId/travel', async (req, res) => {
+    const userId = idParam.parse(req.params.userId);
+    const user = await ctx.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!user) throw new HttpError('NOT_FOUND', 'User not found.');
+    const from = sixMonthsBefore(istDateOf(ctx.now()));
+    const bookings = await ctx.prisma.booking.findMany({
+      where: { userId, trip: { travelDate: { gte: from } } },
+      include: { trip: true },
+      orderBy: [{ trip: { travelDate: 'desc' } }, { trip: { departureTime: 'desc' } }],
+      take: 300,
+    });
+    const body: UserTravelHistoryDto = {
+      from,
+      entries: bookings.map((b) => ({
+        reference: b.bookingReference,
+        status: b.status as UserTravelHistoryDto['entries'][number]['status'],
+        travelDate: b.trip.travelDate,
+        departureTime: b.trip.departureTime,
+        direction: directionOf(b.trip.origin as Campus, b.trip.destination as Campus),
+        origin: b.trip.origin as Campus,
+        destination: b.trip.destination as Campus,
+        serviceLabel: b.trip.serviceLabel,
+        passengerName: b.passengerName,
+        passengerType: b.passengerType as PassengerType,
+      })),
     };
     res.json(body);
   });

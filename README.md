@@ -43,7 +43,7 @@ All times are **Asia/Kolkata (IST)**. Enforced by the API; the UI only mirrors t
 | Data retention    | phone numbers, guest emails and ID numbers are erased **180 days** after the trip                                                                                                             |
 | Vehicles          | Bus 1 → **BUS** (24 seats), Bus 2 → **VAN** (13 seats)                                                                                                                                        |
 | 1:30 PM VAN       | confirmed as 1:30 PM                                                                                                                                                                          |
-| Admins            | `dgssac`, `sec_officer`, `deansonipat`, `eoasecurity` (Kerberos id or `@iitd.ac.in` email)                                                                                                    |
+| Admins            | `dgssac`, `sec_officer`, `securityofficer`, `deansonipat`, `eoasecurity`, `eoatransport`, `eoahtra`, `cs5240081` (Kerberos id or `@iitd.ac.in` email)                                        |
 
 | Vehicle | Departure | Route           | Seats |
 | ------- | --------- | --------------- | ----- |

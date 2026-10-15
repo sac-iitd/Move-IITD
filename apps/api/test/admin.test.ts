@@ -368,4 +368,29 @@ describe('notifications and audit log', () => {
     const all = JSON.stringify(await db.auditLog.findMany());
     expect(all).not.toMatch(/csrf|access_token|bus_sid/i);
   });
+
+  it("returns a user's trips from the last 6 months and leaves older ones out", async () => {
+    const recent = await bookAs('ee1', (await tripOn(MON, '10:00')).id);
+    const older = await bookAs('ee1', (await tripOn('2026-10-20', '10:00')).id);
+    await db.trip.update({
+      where: { id: (await tripOn('2026-10-20', '10:00')).id },
+      data: { travelDate: '2025-01-15' },
+    });
+    const user = await db.user.findFirstOrThrow({ where: { providerSubject: 'ee1' } });
+    const res = await admin.agent.get(`/api/v1/admin/users/${user.id}/travel`);
+    expect(res.status).toBe(200);
+    expect(res.body.from).toBe('2026-04-14');
+    expect(res.body.entries.map((e: { reference: string }) => e.reference)).toEqual([
+      recent.reference,
+    ]);
+    expect(res.body.entries[0]).toMatchObject({
+      travelDate: MON,
+      passengerType: 'SELF',
+      status: 'CONFIRMED',
+    });
+    expect(res.body.entries.some((e: { reference: string }) => e.reference === older.reference)).toBe(
+      false,
+    );
+    expect((await admin.agent.get('/api/v1/admin/users/missing/travel')).status).toBe(404);
+  });
 });

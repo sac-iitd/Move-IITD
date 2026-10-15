@@ -101,6 +101,25 @@ describe('users & blocks', () => {
         },
       }),
       'GET /admin/blocks': () => ({ body: { blocks: [] } }),
+      'GET /admin/users/u2/travel': () => ({
+        body: {
+          from: '2026-04-16',
+          entries: [
+            {
+              reference: 'SNP-HIST-0001',
+              status: 'CONFIRMED',
+              travelDate: '2026-10-13',
+              departureTime: '07:30',
+              direction: 'DELHI_TO_SONIPAT',
+              origin: 'DELHI',
+              destination: 'SONIPAT',
+              serviceLabel: 'BUS',
+              passengerName: 'Some Student',
+              passengerType: 'SELF',
+            },
+          ],
+        },
+      }),
       'POST /admin/blocks': () => ({ status: 201, body: { block: {}, cancelledBookings: 2 } }),
     });
     renderWithProviders(<UsersPage />, { route: '/admin/users' });
@@ -114,6 +133,8 @@ describe('users & blocks', () => {
     const body = JSON.parse(calls.find((c) => c.key === 'POST /admin/blocks')!.init.body as string);
     expect(body).toMatchObject({ userId: 'u2', reason: 'Repeated no-shows' });
     expect(body.startsOn <= body.endsOn).toBe(true);
+    expect(await screen.findByText('SNP-HIST-0001')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Travel history: Some Student' })).toBeInTheDocument();
   });
 });
 

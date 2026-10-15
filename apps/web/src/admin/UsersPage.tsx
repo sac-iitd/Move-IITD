@@ -6,12 +6,14 @@ import {
   type AdminUserDto,
   type Paginated,
   type UserBlockDto,
+  type UserTravelHistoryDto,
 } from '@iitd-bus/shared';
 import { api } from '../api/client';
+import { BookingStatusBadge } from '../components/Badges';
 import { Dialog } from '../components/Dialog';
 import { useToast } from '../components/Toast';
 import { Alert, EmptyState, ErrorState, LoadingSkeleton } from '../components/ui';
-import { errorMessage, formatIst, formatTravelDate } from '../lib/format';
+import { errorMessage, formatIst, formatTravelDate, formatWallTime, routeText } from '../lib/format';
 import { Pagination, SearchInput, TableWrap, Td, Th } from './components';
 
 function BlockDialog({ user, onClose }: { user: AdminUserDto | null; onClose: () => void }) {
@@ -125,11 +127,20 @@ export function UsersPage() {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [blocking, setBlocking] = useState<AdminUserDto | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const qs = new URLSearchParams({ page: String(page), ...(q && { q }) });
   const users = useQuery({
     queryKey: ['admin', 'users', qs.toString()],
     queryFn: () => api<Paginated<AdminUserDto>>(`/admin/users?${qs}`),
     placeholderData: (prev) => prev,
+  });
+  const onlyMatch = users.data?.items.length === 1 ? users.data.items[0] : undefined;
+  const historyId = selectedId ?? onlyMatch?.id ?? null;
+  const historyUser = users.data?.items.find((u) => u.id === historyId);
+  const history = useQuery({
+    queryKey: ['admin', 'travel', historyId],
+    queryFn: () => api<UserTravelHistoryDto>(`/admin/users/${historyId}/travel`),
+    enabled: !!historyId,
   });
   const blocks = useQuery({
     queryKey: ['admin', 'blocks'],
@@ -185,7 +196,10 @@ export function UsersPage() {
               </thead>
               <tbody>
                 {users.data.items.map((u) => (
-                  <tr key={u.id} className="border-t border-ink-900/10">
+                  <tr
+                    key={u.id}
+                    className={`border-t border-ink-900/10 ${u.id === historyId ? 'bg-brand-100/50' : ''}`}
+                  >
                     <Td className="font-medium">{u.name}</Td>
                     <Td className="text-xs">
                       {u.email ?? '-'}
@@ -207,6 +221,15 @@ export function UsersPage() {
                       )}
                     </Td>
                     <Td>
+                      <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="btn-secondary min-h-9 px-3 py-1"
+                        aria-pressed={u.id === historyId}
+                        onClick={() => setSelectedId(u.id)}
+                      >
+                        History
+                      </button>
                       {u.activeBlock ? (
                         <button
                           type="button"
@@ -225,6 +248,7 @@ export function UsersPage() {
                           Block
                         </button>
                       ) : null}
+                      </div>
                     </Td>
                   </tr>
                 ))}
@@ -236,6 +260,62 @@ export function UsersPage() {
               total={users.data.total}
               onPage={setPage}
             />
+            <section aria-labelledby="travel-h" className="space-y-3">
+              <h3 id="travel-h" className="text-base font-bold">
+                Travel history
+                {historyUser ? `: ${historyUser.name}` : ''}
+              </h3>
+              <p className="text-xs text-ink-800">
+                Trips from the last 6 months, plus any upcoming booking. Kept for every person who
+                has signed in.
+              </p>
+              {!historyId ? (
+                <p className="text-sm text-ink-800">
+                  Choose History on a person to see their trips.
+                </p>
+              ) : history.isPending ? (
+                <LoadingSkeleton rows={2} label="Loading travel history" />
+              ) : history.isError ? (
+                <ErrorState error={history.error} onRetry={() => void history.refetch()} />
+              ) : history.data.entries.length === 0 ? (
+                <EmptyState title="No trips in the last 6 months" />
+              ) : (
+                <TableWrap caption={`Travel history for ${historyUser?.name ?? 'user'}`}>
+                  <thead className="bg-brand-100">
+                    <tr>
+                      <Th>Date</Th>
+                      <Th>Departure</Th>
+                      <Th>Route</Th>
+                      <Th>Passenger</Th>
+                      <Th>Status</Th>
+                      <Th>Reference</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.data.entries.map((e) => (
+                      <tr key={e.reference} className="border-t border-ink-900/10">
+                        <Td className="text-xs">{formatTravelDate(e.travelDate)}</Td>
+                        <Td className="text-xs">{formatWallTime(e.departureTime)}</Td>
+                        <Td className="text-xs">
+                          {e.serviceLabel}
+                          <span className="block">{routeText(e)}</span>
+                        </Td>
+                        <Td className="text-xs">
+                          {e.passengerName}
+                          {e.passengerType === 'GUEST' && (
+                            <span className="block text-ink-800">Guest</span>
+                          )}
+                        </Td>
+                        <Td>
+                          <BookingStatusBadge status={e.status} />
+                        </Td>
+                        <Td className="font-mono text-xs">{e.reference}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </TableWrap>
+              )}
+            </section>
           </>
         )}
       </section>
