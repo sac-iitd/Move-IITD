@@ -127,20 +127,17 @@ export function UsersPage() {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [blocking, setBlocking] = useState<AdminUserDto | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [historyUser, setHistoryUser] = useState<AdminUserDto | null>(null);
   const qs = new URLSearchParams({ page: String(page), ...(q && { q }) });
   const users = useQuery({
     queryKey: ['admin', 'users', qs.toString()],
     queryFn: () => api<Paginated<AdminUserDto>>(`/admin/users?${qs}`),
     placeholderData: (prev) => prev,
   });
-  const onlyMatch = users.data?.items.length === 1 ? users.data.items[0] : undefined;
-  const historyId = selectedId ?? onlyMatch?.id ?? null;
-  const historyUser = users.data?.items.find((u) => u.id === historyId);
   const history = useQuery({
-    queryKey: ['admin', 'travel', historyId],
-    queryFn: () => api<UserTravelHistoryDto>(`/admin/users/${historyId}/travel`),
-    enabled: !!historyId,
+    queryKey: ['admin', 'travel', historyUser?.id],
+    queryFn: () => api<UserTravelHistoryDto>(`/admin/users/${historyUser!.id}/travel`),
+    enabled: !!historyUser,
   });
   const blocks = useQuery({
     queryKey: ['admin', 'blocks'],
@@ -196,10 +193,7 @@ export function UsersPage() {
               </thead>
               <tbody>
                 {users.data.items.map((u) => (
-                  <tr
-                    key={u.id}
-                    className={`border-t border-ink-900/10 ${u.id === historyId ? 'bg-brand-100/50' : ''}`}
-                  >
+                  <tr key={u.id} className="border-t border-ink-900/10">
                     <Td className="font-medium">{u.name}</Td>
                     <Td className="text-xs">
                       {u.email ?? '-'}
@@ -225,8 +219,7 @@ export function UsersPage() {
                       <button
                         type="button"
                         className="btn-secondary min-h-9 px-3 py-1"
-                        aria-pressed={u.id === historyId}
-                        onClick={() => setSelectedId(u.id)}
+                        onClick={() => setHistoryUser(u)}
                       >
                         History
                       </button>
@@ -260,62 +253,6 @@ export function UsersPage() {
               total={users.data.total}
               onPage={setPage}
             />
-            <section aria-labelledby="travel-h" className="space-y-3">
-              <h3 id="travel-h" className="text-base font-bold">
-                Travel history
-                {historyUser ? `: ${historyUser.name}` : ''}
-              </h3>
-              <p className="text-xs text-ink-800">
-                Trips from the last 6 months, plus any upcoming booking. Kept for every person who
-                has signed in.
-              </p>
-              {!historyId ? (
-                <p className="text-sm text-ink-800">
-                  Choose History on a person to see their trips.
-                </p>
-              ) : history.isPending ? (
-                <LoadingSkeleton rows={2} label="Loading travel history" />
-              ) : history.isError ? (
-                <ErrorState error={history.error} onRetry={() => void history.refetch()} />
-              ) : history.data.entries.length === 0 ? (
-                <EmptyState title="No trips in the last 6 months" />
-              ) : (
-                <TableWrap caption={`Travel history for ${historyUser?.name ?? 'user'}`}>
-                  <thead className="bg-brand-100">
-                    <tr>
-                      <Th>Date</Th>
-                      <Th>Departure</Th>
-                      <Th>Route</Th>
-                      <Th>Passenger</Th>
-                      <Th>Status</Th>
-                      <Th>Reference</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.data.entries.map((e) => (
-                      <tr key={e.reference} className="border-t border-ink-900/10">
-                        <Td className="text-xs">{formatTravelDate(e.travelDate)}</Td>
-                        <Td className="text-xs">{formatWallTime(e.departureTime)}</Td>
-                        <Td className="text-xs">
-                          {e.serviceLabel}
-                          <span className="block">{routeText(e)}</span>
-                        </Td>
-                        <Td className="text-xs">
-                          {e.passengerName}
-                          {e.passengerType === 'GUEST' && (
-                            <span className="block text-ink-800">Guest</span>
-                          )}
-                        </Td>
-                        <Td>
-                          <BookingStatusBadge status={e.status} />
-                        </Td>
-                        <Td className="font-mono text-xs">{e.reference}</Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </TableWrap>
-              )}
-            </section>
           </>
         )}
       </section>
@@ -365,6 +302,52 @@ export function UsersPage() {
       </section>
 
       <BlockDialog user={blocking} onClose={() => setBlocking(null)} />
+      <Dialog
+        open={!!historyUser}
+        title={historyUser ? `Travel history: ${historyUser.name}` : 'Travel history'}
+        onClose={() => setHistoryUser(null)}
+        footer={
+          <button type="button" className="btn-secondary" onClick={() => setHistoryUser(null)}>
+            Close
+          </button>
+        }
+      >
+        <p className="text-xs text-ink-800">
+          Trips from the last 6 months, plus any upcoming booking.
+          {historyUser?.email ? ` ${historyUser.email}` : ''}{' '}
+          {historyUser ? `(${historyUser.subject})` : ''}
+        </p>
+        <div className="mt-3">
+          {history.isPending ? (
+            <LoadingSkeleton rows={2} label="Loading travel history" />
+          ) : history.isError ? (
+            <ErrorState error={history.error} onRetry={() => void history.refetch()} />
+          ) : !history.data || history.data.entries.length === 0 ? (
+            <EmptyState title="No trips in the last 6 months" />
+          ) : (
+            <ul className="space-y-2">
+              {history.data.entries.map((e) => (
+                <li key={e.reference} className="rounded-lg border border-ink-900/10 p-3 text-xs">
+                  <p className="font-semibold text-ink-900">
+                    {formatWallTime(e.departureTime)} · {formatTravelDate(e.travelDate)}
+                  </p>
+                  <p>
+                    {e.serviceLabel} · {routeText(e)}
+                  </p>
+                  <p>
+                    {e.passengerName}
+                    {e.passengerType === 'GUEST' ? ' (visitor)' : ''}
+                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <BookingStatusBadge status={e.status} />
+                    <span className="font-mono">{e.reference}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Dialog>
     </div>
   );
 }

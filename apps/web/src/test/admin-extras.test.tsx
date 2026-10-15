@@ -133,8 +133,9 @@ describe('users & blocks', () => {
     const body = JSON.parse(calls.find((c) => c.key === 'POST /admin/blocks')!.init.body as string);
     expect(body).toMatchObject({ userId: 'u2', reason: 'Repeated no-shows' });
     expect(body.startsOn <= body.endsOn).toBe(true);
-    expect(await screen.findByText('SNP-HIST-0001')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Travel history: Some Student' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'History' }));
+    const history = await screen.findByRole('dialog', { name: 'Travel history: Some Student' });
+    expect(within(history).getByText('SNP-HIST-0001')).toBeInTheDocument();
   });
 });
 
