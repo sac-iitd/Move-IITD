@@ -27,11 +27,11 @@ describe('service templates', () => {
         (t) => `${t.serviceLabel} ${t.departureTime} ${t.origin}>${t.destination} ${t.capacity}`,
       ),
     ).toEqual([
-      'BUS 07:30 DELHI>SONIPAT 24',
+      'BUS 07:45 DELHI>SONIPAT 24',
       'BUS 17:30 SONIPAT>DELHI 24',
       'VAN 07:30 SONIPAT>DELHI 13',
       'VAN 10:00 DELHI>SONIPAT 13',
-      'VAN 13:30 SONIPAT>DELHI 13',
+      'VAN 13:00 SONIPAT>DELHI 13',
       'VAN 17:00 DELHI>SONIPAT 13',
     ]);
   });
@@ -74,7 +74,7 @@ describe('trip generation', () => {
     await generateTrips(db, { now: NOW, horizonDays: 0 });
     const today = await db.trip.findMany({ where: { travelDate: '2026-10-14' } });
     // 07:30 departures have left at 09:00; four remain
-    expect(today.map((t) => t.departureTime).sort()).toEqual(['10:00', '13:30', '17:00', '17:30']);
+    expect(today.map((t) => t.departureTime).sort()).toEqual(['10:00', '13:00', '17:00', '17:30']);
   });
 
   it('is idempotent', async () => {
@@ -96,10 +96,10 @@ describe('trip generation', () => {
   it('snapshots the schedule and computes windows in IST', async () => {
     await generateTrips(db, { now: NOW, horizonDays: 13 });
     const t = await db.trip.findFirstOrThrow({
-      where: { travelDate: '2026-10-19', departureTime: '07:30', origin: 'DELHI' },
+      where: { travelDate: '2026-10-19', departureTime: '07:45', origin: 'DELHI' },
     });
     expect(t.capacity).toBe(24);
-    expect(t.departureAt.toISOString()).toBe('2026-10-19T02:00:00.000Z');
+    expect(t.departureAt.toISOString()).toBe('2026-10-19T02:15:00.000Z');
     expect(t.bookingOpensAt.toISOString()).toBe('2026-10-11T18:30:00.000Z');
     expect(t.bookingClosesAt.toISOString()).toBe('2026-10-16T10:30:00.000Z'); // Friday 16:00 IST
     expect(t.cancellationClosesAt.toISOString()).toBe('2026-10-16T08:30:00.000Z'); // Friday 14:00 IST
@@ -113,10 +113,10 @@ describe('trip generation', () => {
     });
     await generateTrips(db, { now: NOW, horizonDays: 13 });
     const early = await db.trip.findFirstOrThrow({
-      where: { travelDate: '2026-10-19', origin: 'DELHI', departureTime: '07:30' },
+      where: { travelDate: '2026-10-19', origin: 'DELHI', departureTime: '07:45' },
     });
     const late = await db.trip.findFirstOrThrow({
-      where: { travelDate: '2026-10-26', origin: 'DELHI', departureTime: '07:30' },
+      where: { travelDate: '2026-10-26', origin: 'DELHI', departureTime: '07:45' },
     });
     expect(early.capacity).toBe(24);
     expect(late.capacity).toBe(40);

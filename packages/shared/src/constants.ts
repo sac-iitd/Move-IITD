@@ -7,16 +7,16 @@ export const CAMPUSES = ['DELHI', 'SONIPAT'] as const;
 export type Campus = (typeof CAMPUSES)[number];
 
 export const CAMPUS_LABELS: Record<Campus, string> = {
-  DELHI: 'IIT Delhi Hauz Khas Campus',
-  SONIPAT: 'IIT Delhi Sonipat Campus',
+  DELHI: "IIT Delhi's Hauz Khas campus",
+  SONIPAT: "IIT Delhi's Sonipat campus",
 };
 
 export const DIRECTIONS = ['DELHI_TO_SONIPAT', 'SONIPAT_TO_DELHI'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
 export const DIRECTION_LABELS: Record<Direction, string> = {
-  DELHI_TO_SONIPAT: 'IIT Delhi Hauz Khas Campus → IIT Delhi Sonipat Campus',
-  SONIPAT_TO_DELHI: 'IIT Delhi Sonipat Campus → IIT Delhi Hauz Khas Campus',
+  DELHI_TO_SONIPAT: 'Hauz Khas campus → Sonipat campus',
+  SONIPAT_TO_DELHI: 'Sonipat campus → Hauz Khas campus',
 };
 
 export function directionOf(origin: Campus, destination: Campus): Direction {

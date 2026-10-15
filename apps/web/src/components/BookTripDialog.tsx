@@ -529,7 +529,7 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
               checked={false}
               onChange={() => patch({ guests: [blankGuest()] })}
             />
-            Are you booking for someone else?
+            Are you booking for a visitor?
           </label>
         )}
 
@@ -539,7 +539,7 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
           return (
             <fieldset key={i} className="space-y-3 rounded-lg border border-ink-900/15 p-3">
               <legend className="px-1 text-sm font-semibold">
-                {form.guests.length > 1 ? `Guest ${i + 1}` : 'Guest'}
+                {form.guests.length > 1 ? `Visitor ${i + 1}` : 'Visitor'}
               </legend>
               <Field id={`${gid}-idtype`} label="Government photo ID" error={err(`passengers.${n}.guest.idType`)}>
                 <select
@@ -619,7 +619,7 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
               </Field>
               <Field
                 id={`${gid}-email`}
-                label="Email (the guest gets their own confirmation)"
+                label="Email (the visitor gets their own confirmation)"
                 error={err(`passengers.${n}.guest.email`)}
               >
                 <input
@@ -651,7 +651,7 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
                   className="text-sm font-medium text-ink-800 underline"
                   onClick={() => patch({ guests: form.guests.filter((_, j) => j !== i) })}
                 >
-                  Remove this guest
+                  Remove this visitor
                 </button>
               )}
             </fieldset>
@@ -664,7 +664,7 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
             className="btn-secondary w-full"
             onClick={() => patch({ guests: [...form.guests, blankGuest()] })}
           >
-            Add a second guest
+            Add a second visitor
           </button>
         )}
 

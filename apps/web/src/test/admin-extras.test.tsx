@@ -208,7 +208,7 @@ describe('analytics', () => {
     expect(await screen.findByText('Occupancy', { selector: 'p' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Seats booked per day' })).toBeInTheDocument();
     expect(screen.getByText('83.3%')).toBeInTheDocument();
-    expect(screen.getByText(/Hauz Khas Campus → IIT Delhi Sonipat Campus:/)).toBeInTheDocument();
+    expect(screen.getByText(/Hauz Khas campus → Sonipat campus:/)).toBeInTheDocument();
     const toggles = screen.getAllByRole('button', { name: 'Show table' });
     expect(toggles).toHaveLength(5);
     await userEvent.click(toggles[0]!);

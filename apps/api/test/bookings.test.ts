@@ -61,7 +61,7 @@ describe('trip listing', () => {
       `/api/v1/trips?from=${MON}&to=${MON}&direction=DELHI_TO_SONIPAT`,
     );
     expect(toSonipat.body.trips.map((x: { departureTime: string }) => x.departureTime)).toEqual([
-      '07:30',
+      '07:45',
       '10:00',
       '17:00',
     ]);
@@ -84,7 +84,7 @@ describe('trip listing', () => {
 
 describe('booking', () => {
   it('rejects unauthenticated and CSRF-less requests', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     expect((await request(t.app).post(`/api/v1/trips/${target.id}/bookings`)).status).toBe(401);
     const s = await signIn(t, identity('u1'));
     const res = await s.agent.post(`/api/v1/trips/${target.id}/bookings`);
@@ -93,7 +93,7 @@ describe('booking', () => {
   });
 
   it('confirms a booking, decrements availability and queues one confirmation email', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const s = await signIn(t, identity('u1'));
     const res = await book(s, target.id);
     expect(res.status).toBe(201);
@@ -134,7 +134,7 @@ describe('booking', () => {
   });
 
   it('allows only one active booking per user per trip', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const s = await signIn(t, identity('u1'));
     const first = await book(s, target.id);
     const second = await book(s, target.id);
@@ -146,7 +146,7 @@ describe('booking', () => {
   });
 
   it('replays idempotent retries without duplicating the booking or the email', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const s = await signIn(t, identity('u1'));
     const a = await book(s, target.id, 'retry-key-0001');
     const b = await book(s, target.id, 'retry-key-0001');
@@ -159,7 +159,7 @@ describe('booking', () => {
   });
 
   it('ignores client-supplied identity, capacity and status fields', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const victim = await signIn(t, identity('victim'));
     const s = await signIn(t, identity('u1'));
     const res = await book(s, target.id).send({
@@ -175,7 +175,7 @@ describe('booking', () => {
   });
 
   it('rejects bookings before the seven-day window opens and accepts exactly at opening', async () => {
-    const target = await trip('2026-10-26', '07:30'); // opens Mon 2026-10-19 00:00 IST
+    const target = await trip('2026-10-26', '07:45'); // opens Mon 2026-10-19 00:00 IST
     const s = await signIn(t, identity('u1'));
     t.clock.now = new Date(target.bookingOpensAt.getTime() - 1);
     const early = await book(s, target.id);
@@ -186,7 +186,7 @@ describe('booking', () => {
   });
 
   it('closes Monday trips at 4 PM IST on the preceding Friday', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const s1 = await signIn(t, identity('u1'));
     const s2 = await signIn(t, identity('u2'));
     const s3 = await signIn(t, identity('u3'));
@@ -245,7 +245,7 @@ describe('booking', () => {
 
 describe('concurrency', () => {
   it('never exceeds capacity when many users race for the last seats (HTTP)', async () => {
-    const target = await trip(MON, '13:30', 'SONIPAT');
+    const target = await trip(MON, '13:00', 'SONIPAT');
     await db.trip.update({ where: { id: target.id }, data: { capacity: 3 } });
     const users = await Promise.all(
       Array.from({ length: 15 }, (_, i) => signIn(t, identity(`racer${i}`))),
@@ -263,7 +263,7 @@ describe('concurrency', () => {
   });
 
   it('a double-clicking user gets exactly one booking', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const s = await signIn(t, identity('clicker'));
     const results = await Promise.all(Array.from({ length: 8 }, () => book(s, target.id)));
     expect(results.filter((r) => r.status === 201)).toHaveLength(1);
@@ -314,7 +314,7 @@ describe('concurrency', () => {
 
 describe('cancellation and access control', () => {
   it('releases the seat, keeps history and allows rebooking', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const s = await signIn(t, identity('u1'));
     const first = await book(s, target.id);
     const ref = first.body.booking.reference;
@@ -348,7 +348,7 @@ describe('cancellation and access control', () => {
   });
 
   it('blocks self-cancellation after the cutoff', async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const s = await signIn(t, identity('u1'));
     const ref = (await book(s, target.id)).body.booking.reference;
     t.clock.now = target.cancellationClosesAt;
@@ -359,7 +359,7 @@ describe('cancellation and access control', () => {
   });
 
   it("hides other users' bookings (404) and prevents cancelling them", async () => {
-    const target = await trip(MON, '07:30');
+    const target = await trip(MON, '07:45');
     const owner = await signIn(t, identity('owner'));
     const other = await signIn(t, identity('other'));
     const ref = (await book(owner, target.id)).body.booking.reference;

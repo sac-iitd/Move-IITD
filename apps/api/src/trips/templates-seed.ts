@@ -12,8 +12,8 @@ interface TemplateSeed {
 }
 
 /**
- * The six recurring weekday departures from plan.md §3.
- * VAN's 13:30 Sonipat → Delhi time was confirmed as 1:30 PM (Oct 2026).
+ * The six weekday departures in the institute guideline (Oct 2026).
+ * Bus Hauz Khas → Sonipat is 7:45 AM. Van Sonipat → Hauz Khas is 1:00 PM.
  */
 export const SERVICE_TEMPLATE_SEED: readonly TemplateSeed[] = [
   {
@@ -22,7 +22,7 @@ export const SERVICE_TEMPLATE_SEED: readonly TemplateSeed[] = [
     capacity: 24,
     origin: 'DELHI',
     destination: 'SONIPAT',
-    departureTime: '07:30',
+    departureTime: '07:45',
   },
   {
     code: 'BUS1-1730-SNP-DEL',
@@ -54,7 +54,7 @@ export const SERVICE_TEMPLATE_SEED: readonly TemplateSeed[] = [
     capacity: 13,
     origin: 'SONIPAT',
     destination: 'DELHI',
-    departureTime: '13:30',
+    departureTime: '13:00',
   },
   {
     code: 'BUS2-1700-DEL-SNP',

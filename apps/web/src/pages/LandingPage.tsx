@@ -32,12 +32,12 @@ export function LandingPage() {
             <p className="text-sm font-semibold uppercase tracking-widest text-brand-300">
               Student Affairs Council · IIT Delhi
             </p>
-            <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-4xl">
-              MoveIITD campus shuttle
+            <h1 className="mt-2 text-2xl font-bold leading-tight text-white sm:text-3xl">
+              MoveIITD: Hauz Khas (Delhi) ↔ Sonipat (Haryana) Intercampus Vehicle Service
             </h1>
             <p className="mt-3 max-w-xl text-brand-100/90">
-              Reserve a seat on the shuttle between IIT Delhi Hauz Khas Campus and IIT Delhi
-              Sonipat Campus. Buses run Monday to Friday. Sign in with your IIT Delhi Kerberos
+              Reserve a seat on the vehicles running between IIT Delhi's Hauz Khas campus and
+              Sonipat campus. Vehicles run Monday to Friday. Sign in with your IIT Delhi Kerberos
               account to book.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -58,6 +58,9 @@ export function LandingPage() {
         <h2 id="timetable-h" className="text-xl font-bold">
           Weekday timetable
         </h2>
+        <p className="mt-1 text-sm text-ink-800">
+          Vehicles run Monday to Friday, except on Institute holidays.
+        </p>
         <div className="mt-3">
           {schedule.isPending ? (
             <LoadingSkeleton rows={2} label="Loading timetable" />
@@ -136,37 +139,41 @@ export function LandingPage() {
             <li>
               <strong>Booking for Monday trips closes on Friday at 4:00 PM.</strong>
             </li>
-            <li>Regular bus booking will be allowed from Monday to Friday.</li>
+            <li>Regular vehicles run Monday to Friday. Special vehicles may run on other days.</li>
           </ul>
         </div>
         <div className="card p-5">
-          <h3 className="font-bold">Seats, Guests &amp; ID Requirements</h3>
+          <h3 className="font-bold">Seats, visitors and ID</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            <li>Up to 2 seats per person per trip may be booked for yourself and/or a guest.</li>
-            <li>Bookings for non-IIT Delhi visitors are permitted only for official purposes.</li>
-            <li>IIT Delhi members must carry their valid, institute-issued ID card.</li>
             <li>
-              Visitors must carry a valid government-issued photo ID. IDs will be verified during
-              boarding.
+              Up to 2 seats per person per trip, for yourself and/or a visitor (guest) to IIT
+              Delhi.
             </li>
             <li>
-              A booking reference and confirmation email will be provided upon successful booking.
+              Visitors may travel only for academic, administrative or other institutional
+              purposes.
             </li>
+            <li>A visitor's Aadhaar, PAN or passport number is required at booking.</li>
+            <li>IIT Delhi members carry their institute identity card.</li>
+            <li>Visitors carry the same Aadhaar, PAN or passport whose number was given.</li>
+            <li>A booking reference and a confirmation email are sent after booking.</li>
             <li>
-              Bookings can be cancelled until 2:00 PM on the day before travel (Friday for Monday
-              trips).
+              Cancel online before 2:00 PM IST the day before travel (Friday for Monday trips).
             </li>
           </ul>
         </div>
         <div className="card p-5">
-          <h3 className="font-bold">Waiting list</h3>
+          <h3 className="font-bold">Waiting list and boarding</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+            <li>Full trip? Join the waiting list.</li>
+            <li>The first person gets the next free seat automatically.</li>
             <li>
-              Full trip? Join the waiting list. The first person gets the next free seat
-              automatically.
+              Seats can be given from the waiting list until booking closes (4:00 PM the day
+              before; Friday for Monday trips).
             </li>
-            <li>Seats can be given from the waiting list until booking closes.</li>
-            <li>Seat numbers are not assigned.</li>
+            <li>Reach the vehicle stand at least 10 minutes before departure.</li>
+            <li>Only passengers with a valid booking confirmation may board.</li>
+            <li>No seat numbers are assigned.</li>
           </ul>
         </div>
       </section>

@@ -129,7 +129,7 @@ describe('overview and listings', () => {
     const trip = await tripOn(MON, '10:00');
     const { reference } = await bookAs('cs1200001', trip.id);
     await bookAs('cs1200002', trip.id);
-    await bookAs('ee1200003', (await tripOn(MON, '13:30', 'SONIPAT')).id);
+    await bookAs('ee1200003', (await tripOn(MON, '13:00', 'SONIPAT')).id);
 
     const byRef = await admin.agent.get(`/api/v1/admin/bookings?q=${reference.toLowerCase()}`);
     expect(byRef.body.items.map((b: { reference: string }) => b.reference)).toEqual([reference]);
@@ -303,7 +303,7 @@ describe('templates', () => {
     const tpl = await db.serviceTemplate.findUniqueOrThrow({
       where: { code: 'BUS2-1330-SNP-DEL' },
     });
-    const booked = await tripOn(MON, '13:30', 'SONIPAT');
+    const booked = await tripOn(MON, '13:00', 'SONIPAT');
     await bookAs('p1', booked.id);
 
     const noApply = await patch(admin, `/api/v1/admin/templates/${tpl.id}`, {
@@ -320,7 +320,7 @@ describe('templates', () => {
     });
     expect(apply.body.refreshedTrips).toBeGreaterThan(0);
     const bookedAfter = await db.trip.findUniqueOrThrow({ where: { id: booked.id } });
-    expect(bookedAfter.departureTime).toBe('13:30'); // never silently rewritten
+    expect(bookedAfter.departureTime).toBe('13:00'); // never silently rewritten
   });
 
   it('rejects impossible cutoff settings', async () => {

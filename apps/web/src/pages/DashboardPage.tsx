@@ -167,7 +167,7 @@ export function DashboardPage() {
         <ErrorState error={trips.error} onRetry={() => void trips.refetch()} />
       ) : grouped.length === 0 ? (
         <EmptyState title="No trips found">
-          Buses run Monday to Friday. Try another date or direction.
+          Vehicles run Monday to Friday. Try another date or direction.
         </EmptyState>
       ) : (
         <div className="space-y-8">

@@ -161,7 +161,7 @@ describe('booking details and guests', () => {
     expect(replay.status).toBe(200);
     expect(await db.booking.count()).toBe(2);
 
-    const other = await book(s, (await tripOn(MON, '07:30')).id, {
+    const other = await book(s, (await tripOn(MON, '07:45')).id, {
       bookerName: 'User u1',
       phone: '9876543210',
       passengers: [
@@ -199,7 +199,7 @@ describe('booking details and guests', () => {
     const stored = await db.booking.findFirstOrThrow({ where: { passengerName: 'Arun Das' } });
     expect(stored.idTypeDetail).toBe('Voter ID');
     const copies = await db.notificationOutbox.findMany({
-      where: { tripId: (await tripOn(MON, '07:30')).id },
+      where: { tripId: (await tripOn(MON, '07:45')).id },
     });
     expect(copies.map((r) => r.recipient).sort()).toEqual([
       'arun@example.com',
