@@ -7,6 +7,7 @@ import {
   istDateOf,
   type BookingAvailability,
   type CreateBookingInput,
+  type CreateBookingsInput,
   type ErrorCode,
   type TripStatus,
 } from '@iitd-bus/shared';
@@ -203,6 +204,201 @@ export async function createBooking(
   }
 }
 
+export interface CreateBookingsResult {
+  bookings: BookingWithRelations[];
+  created: boolean;
+  waitlistPositions: (number | null)[];
+}
+
+/**
+ * Books everyone from one form (the account holder, one guest, or two guests) in a single
+ * transaction, so a double-click or a failed second seat never leaves a partial booking.
+ * The account holder is emailed about every passenger; each guest is emailed separately.
+ */
+export async function createBookings(
+  prisma: PrismaClient,
+  input: {
+    user: User;
+    tripId: string;
+    request: CreateBookingsInput;
+    idempotencyKey?: string;
+    now: Date;
+  },
+): Promise<CreateBookingsResult> {
+  const { user, tripId, request, idempotencyKey, now } = input;
+  const passengers = request.passengers;
+  const keys = passengers.map((_, i) =>
+    idempotencyKey ? (i === 0 ? idempotencyKey : `${idempotencyKey}#${i + 1}`) : undefined,
+  );
+
+  const loadGroup = async (): Promise<CreateBookingsResult | undefined> => {
+    if (!idempotencyKey) return undefined;
+    const rows = await prisma.booking.findMany({
+      where: { userId: user.id, idempotencyKey: { in: keys as string[] } },
+      include: bookingInclude,
+    });
+    if (rows.length === 0) return undefined;
+    if (rows.length !== passengers.length || rows.some((r) => r.tripId !== tripId)) {
+      throw new HttpError('CONFLICT', 'This request key was already used for a different booking.');
+    }
+    const ordered = keys.map((k) => rows.find((r) => r.idempotencyKey === k)!);
+    const positions = await waitlistPositions(prisma, [tripId]);
+    return {
+      bookings: ordered,
+      created: false,
+      waitlistPositions: ordered.map((b) => positions.get(b.id) ?? null),
+    };
+  };
+
+  const replayed = await loadGroup();
+  if (replayed) return replayed;
+
+  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+  if (!trip) throw new HttpError('NOT_FOUND', 'Trip not found.');
+
+  const block = await activeBlockOn(prisma, user.id, [istDateOf(now), trip.travelDate]);
+  if (block) throw blockedError(block);
+
+  await assertGroupAllowance(prisma, user.id, tripId, passengers);
+
+  const availability = availabilityOf(trip, now);
+  const wantsWaitlist = request.joinWaitlist === true;
+  const seatsLeft = Math.max(0, trip.capacity - trip.bookedCount);
+  if (availability === 'FULL' && !wantsWaitlist) {
+    throw new HttpError('TRIP_FULL', 'This trip is fully booked. You can join the waiting list.', {
+      canWaitlist: true,
+    });
+  }
+  if (availability === 'OPEN' && seatsLeft < passengers.length && !wantsWaitlist) {
+    throw new HttpError(
+      'TRIP_FULL',
+      `Only ${seatsLeft} seat${seatsLeft === 1 ? '' : 's'} left on this trip. Book fewer people, or join the waiting list.`,
+      { canWaitlist: true },
+    );
+  }
+  if (availability !== 'OPEN' && availability !== 'FULL')
+    throw new HttpError(AVAILABILITY_ERROR[availability]);
+
+  const booker = { ...user, name: request.bookerName };
+
+  const attempt = () =>
+    withTransientRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const created = [];
+        for (let i = 0; i < passengers.length; i++) {
+          const passenger = passengers[i]!;
+          const slot = await freeSlot(tx, user.id, tripId);
+          if (!slot) throw new HttpError('SEAT_LIMIT');
+
+          const claimed = await tx.trip.updateMany({
+            where: {
+              id: tripId,
+              status: 'SCHEDULED',
+              bookingOpensAt: { lte: now },
+              bookingClosesAt: { gt: now },
+              departureAt: { gt: now },
+              bookedCount: { lt: tx.trip.fields.capacity },
+            },
+            data: { bookedCount: { increment: 1 } },
+          });
+          let status: 'CONFIRMED' | 'WAITLISTED' = 'CONFIRMED';
+          if (claimed.count !== 1) {
+            const fresh = await tx.trip.findUniqueOrThrow({ where: { id: tripId } });
+            const seen = availabilityOf(fresh, now);
+            const a = seen === 'OPEN' ? 'FULL' : seen;
+            if (a === 'FULL' && wantsWaitlist) status = 'WAITLISTED';
+            else if (a === 'FULL')
+              throw new HttpError('TRIP_FULL', undefined, { canWaitlist: true });
+            else throw new HttpError(AVAILABILITY_ERROR[a]);
+          }
+
+          const asSingle: CreateBookingInput = {
+            passengerType: passenger.passengerType,
+            phone: request.phone,
+            purpose: passenger.purpose,
+            purposeDetail: passenger.purposeDetail,
+            guest: passenger.passengerType === 'GUEST' ? passenger.guest : undefined,
+          };
+          const fields = passengerFields(
+            passenger.passengerType === 'SELF' ? booker : user,
+            asSingle,
+          );
+          const booking = await createWithUniqueReference(tx, {
+            ...fields,
+            userId: user.id,
+            tripId,
+            status,
+            activeSlot: slot,
+            idempotencyKey: keys[i] ?? null,
+            bookedAt: now,
+            createdAt: now,
+          });
+          const updatedTrip = await tx.trip.findUniqueOrThrow({ where: { id: tripId } });
+          const positions = await waitlistPositions(tx, [tripId]);
+          const position = positions.get(booking.id) ?? null;
+          await notifyBooking(
+            tx,
+            status === 'CONFIRMED' ? 'BOOKING_CONFIRMATION' : 'WAITLIST_JOINED',
+            booking,
+            updatedTrip,
+            booker,
+            position ? { waitlistPosition: position } : {},
+          );
+          const full = await tx.booking.findUniqueOrThrow({
+            where: { id: booking.id },
+            include: bookingInclude,
+          });
+          created.push({ booking: full, position });
+        }
+        return {
+          bookings: created.map((c) => c.booking),
+          created: true,
+          waitlistPositions: created.map((c) => c.position),
+        };
+      }, TX_OPTIONS),
+    );
+
+  for (let tries = 0; ; tries++) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (isUniqueViolation(err, 'idempotencyKey')) {
+        const again = await loadGroup();
+        if (again) return again;
+      }
+      if (isUniqueViolation(err, 'selfSlot')) {
+        throw new HttpError(
+          'ALREADY_BOOKED',
+          'You already have a booking for yourself on this trip.',
+        );
+      }
+      if (isUniqueViolation(err, 'activeSlot') && tries === 0) continue;
+      if (isUniqueViolation(err, 'activeSlot')) throw new HttpError('SEAT_LIMIT');
+      throw err;
+    }
+  }
+}
+
+async function assertGroupAllowance(
+  db: PrismaClient | Tx,
+  userId: string,
+  tripId: string,
+  passengers: CreateBookingsInput['passengers'],
+) {
+  const active = await db.booking.findMany({
+    where: { userId, tripId, status: { in: ACTIVE } },
+    select: { bookingReference: true, passengerType: true },
+  });
+  const wantsSelf = passengers.some((p) => p.passengerType === 'SELF');
+  if (wantsSelf && active.some((b) => b.passengerType === 'SELF')) {
+    const self = active.find((b) => b.passengerType === 'SELF')!;
+    throw new HttpError('ALREADY_BOOKED', 'You already have a booking for yourself on this trip.', {
+      reference: self.bookingReference,
+    });
+  }
+  if (active.length + passengers.length > MAX_SEATS_PER_TRIP) throw new HttpError('SEAT_LIMIT');
+}
+
 async function assertSeatAllowance(
   db: PrismaClient | Tx,
   userId: string,
@@ -253,6 +449,7 @@ function passengerFields(user: User, r: CreateBookingInput) {
       guestPhone: null,
       idType: 'IITD_ID',
       idNumberEnc: null,
+      idTypeDetail: null,
     };
   }
   const g = r.guest!;
@@ -265,6 +462,7 @@ function passengerFields(user: User, r: CreateBookingInput) {
     passengerEmail: g.email,
     guestPhone: g.phone ?? null,
     idType: g.idType,
+    idTypeDetail: g.idTypeDetail,
     idNumberEnc: encryptIdNumber(g.idNumber),
   };
 }

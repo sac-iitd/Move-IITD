@@ -5,6 +5,7 @@ import {
   CUTOFF_RULES,
   DIRECTIONS,
   GUEST_ID_TYPES,
+  MAX_SEATS_PER_TRIP,
   PURPOSES,
   NOTIFICATION_STATUSES,
   NOTIFICATION_TYPES,
@@ -71,7 +72,28 @@ export function normalizeIdNumber(type: IdType, raw: string): string | null {
   const v = raw.replace(/[\s-]/g, '').toUpperCase();
   if (type === 'AADHAAR') return /^[2-9]\d{11}$/.test(v) ? v : null;
   if (type === 'PAN') return /^[A-Z]{5}\d{4}[A-Z]$/.test(v) ? v : null;
+  // State formats differ, and visitors may hold a foreign passport, so these stay loose.
+  if (type === 'DRIVING_LICENCE') return /^[A-Z0-9]{8,20}$/.test(v) ? v : null;
+  if (type === 'PASSPORT') return /^[A-Z0-9]{6,12}$/.test(v) ? v : null;
+  if (type === 'OTHER') return /^[A-Z0-9]{4,30}$/.test(v) ? v : null;
   return v.length > 0 ? v : null;
+}
+
+export function idNumberError(type: IdType): string {
+  switch (type) {
+    case 'AADHAAR':
+      return 'Enter a valid Aadhaar (12 digits)';
+    case 'PAN':
+      return 'PAN must look like ABCDE1234F';
+    case 'DRIVING_LICENCE':
+      return 'Enter the driving licence number (8–20 letters or digits)';
+    case 'PASSPORT':
+      return 'Enter the passport number (6–12 letters or digits)';
+    case 'OTHER':
+      return 'Enter the ID number (at least 4 letters or digits)';
+    default:
+      return 'Enter the ID number';
+  }
 }
 
 /** Shows only the last 4 characters, e.g. "XXXX XXXX 1234" / "XXXXXX123F". */
@@ -82,34 +104,60 @@ export function maskIdNumber(type: IdType, value: string): string {
 
 const guestSchema = z
   .object({
-    name: z.string().trim().min(2, 'Enter the passenger name').max(100),
-    email: z.string().trim().toLowerCase().email('Enter a valid email'),
+    name: z.string().max(100),
+    email: z.string().max(200),
     idType: z.enum(GUEST_ID_TYPES),
-    idNumber: z
-      .string()
-      .trim()
-      .min(1, 'Enter the ID number')
-      .max(30)
-      // Field-level format check so it is reported together with other field errors.
-      .refine(
-        (v) => normalizeIdNumber('AADHAAR', v) !== null || normalizeIdNumber('PAN', v) !== null,
-        'Enter a valid Aadhaar (12 digits) or PAN (ABCDE1234F)',
-      ),
-    phone: phoneSchema.optional(),
+    /** Document name when idType is OTHER, for example "Voter ID". */
+    idTypeDetail: z.string().max(60).optional(),
+    idNumber: z.string().max(40),
+    // Validated below so a bad ID number is reported even when other fields are empty.
+    phone: z.string().max(20).optional(),
   })
-  .transform((g, ctx) => {
-    const idNumber = normalizeIdNumber(g.idType, g.idNumber);
-    if (!idNumber) {
+  .superRefine((g, ctx) => {
+    if (g.name.trim().length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['name'],
+        message: 'Enter the full name as on the ID',
+      });
+    }
+    if (!z.string().email().safeParse(g.email.trim()).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['email'],
+        message: 'Enter a valid email',
+      });
+    }
+    if (!normalizeIdNumber(g.idType, g.idNumber)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['idNumber'],
-        message:
-          g.idType === 'AADHAAR' ? 'Aadhaar must be 12 digits' : 'PAN must look like ABCDE1234F',
+        message: g.idNumber.trim() ? idNumberError(g.idType) : 'Enter the ID number',
       });
-      return z.NEVER;
     }
-    return { ...g, idNumber };
-  });
+    if (g.idType === 'OTHER' && (g.idTypeDetail?.trim().length ?? 0) < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['idTypeDetail'],
+        message: 'Enter the document name, for example Voter ID',
+      });
+    }
+    if (g.phone !== undefined && !phoneSchema.safeParse(g.phone).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['phone'],
+        message: 'Enter a valid 10-digit Indian mobile number',
+      });
+    }
+  })
+  .transform((g) => ({
+    ...g,
+    name: g.name.trim(),
+    email: g.email.trim().toLowerCase(),
+    idNumber: normalizeIdNumber(g.idType, g.idNumber)!,
+    idTypeDetail: g.idType === 'OTHER' ? (g.idTypeDetail?.trim() ?? null) : null,
+    phone: g.phone === undefined ? undefined : phoneSchema.parse(g.phone),
+  }));
 
 /** Body of POST /trips/:tripId/bookings. */
 export const createBookingSchema = z
@@ -139,6 +187,61 @@ export const createBookingSchema = z
     }
   });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
+
+const batchPassengerSchema = z.object({
+  passengerType: z.enum(['SELF', 'GUEST']),
+  purpose: z.enum(PURPOSES, { message: 'Select the purpose of visit' }),
+  purposeDetail: z.string().trim().max(200).optional(),
+  guest: guestSchema.optional(),
+});
+
+/**
+ * One submission books everyone travelling: the account holder, one guest, or two guests.
+ * At most two passengers, and at most one of them is the account holder.
+ */
+export const createBookingsSchema = z
+  .object({
+    bookerName: z.string().trim().min(2, 'Enter your name').max(100),
+    phone: phoneSchema,
+    joinWaitlist: z.boolean().optional(),
+    passengers: z
+      .array(batchPassengerSchema)
+      .min(1, 'Choose who is travelling')
+      .max(MAX_SEATS_PER_TRIP, 'You can book at most 2 passengers'),
+  })
+  .superRefine((b, ctx) => {
+    if (b.passengers.filter((p) => p.passengerType === 'SELF').length > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['passengers'],
+        message: 'You can only book yourself once on a trip',
+      });
+    }
+    b.passengers.forEach((p, i) => {
+      if (p.purpose === 'OTHER' && !p.purposeDetail) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['passengers', i, 'purposeDetail'],
+          message: 'Describe the purpose',
+        });
+      }
+      if (p.passengerType === 'GUEST' && !p.guest) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['passengers', i, 'guest'],
+          message: 'Guest details are required',
+        });
+      }
+      if (p.passengerType === 'GUEST' && p.guest && !p.guest.phone) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['passengers', i, 'guest', 'phone'],
+          message: 'Enter a valid 10-digit Indian mobile number',
+        });
+      }
+    });
+  });
+export type CreateBookingsInput = z.infer<typeof createBookingsSchema>;
 
 // ---------- Requests ----------
 
@@ -356,6 +459,8 @@ export interface PassengerDto {
   purpose: Purpose;
   purposeDetail: string | null;
   idType: IdType;
+  /** Set when idType is OTHER, for example "Voter ID". */
+  idTypeDetail?: string | null;
   /** Masked for users ("XXXX XXXX 1234"); null after data retention clean-up. */
   idNumberMasked: string | null;
 }
@@ -363,6 +468,12 @@ export interface PassengerDto {
 export interface CreateBookingResponse {
   booking: BookingDto;
   /** true when this request created the booking; false when an idempotent replay returned it. */
+  created: boolean;
+}
+
+/** Response of a one-form booking that can contain one or two passengers. */
+export interface CreateBookingsResponse {
+  bookings: BookingDto[];
   created: boolean;
 }
 
@@ -439,6 +550,7 @@ export interface AdminBookingDto {
   purpose: Purpose;
   purposeDetail: string | null;
   idType: IdType;
+  idTypeDetail?: string | null;
   /** Full ID number (admins only). IITD_ID = Kerberos id. Null after retention clean-up. */
   idNumber: string | null;
   waitlistPosition: number | null;
@@ -456,6 +568,7 @@ export interface ManifestResponse {
     passengerType: PassengerType;
     bookedBy: string;
     idType: IdType;
+    idTypeDetail?: string | null;
     idNumber: string | null;
   }>;
   waitlist: Array<{ position: number; reference: string; name: string; phone: string | null }>;

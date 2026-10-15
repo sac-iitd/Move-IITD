@@ -170,6 +170,7 @@ function toAdminBookingDto(
     purpose: b.purpose as Purpose,
     purposeDetail: b.purposeDetail,
     idType: b.idType as IdType,
+    idTypeDetail: b.idTypeDetail,
     idNumber: fullIdNumber(b, b.user.providerSubject),
     waitlistPosition: b.status === 'WAITLISTED' ? waitlistPosition : null,
   };
@@ -590,7 +591,9 @@ export function adminRouter(ctx: AppContext) {
         b.phone,
         row.guestPhone,
         purposeText(b.purpose, b.purposeDetail),
-        ID_TYPE_LABELS[b.idType],
+        row.idTypeDetail
+          ? `${ID_TYPE_LABELS[b.idType]}: ${row.idTypeDetail}`
+          : ID_TYPE_LABELS[b.idType],
         b.idNumber,
         b.userName,
         b.userEmail,
@@ -681,6 +684,7 @@ export function adminRouter(ctx: AppContext) {
         passengerType: b.passengerType as PassengerType,
         bookedBy: b.user.name,
         idType: b.idType as IdType,
+        idTypeDetail: b.idTypeDetail,
         idNumber: fullIdNumber(b, b.user.providerSubject),
       })),
       waitlist: waiting.map((b, i) => ({

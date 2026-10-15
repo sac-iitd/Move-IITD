@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { DIRECTION_LABELS, ID_TYPE_LABELS, type ManifestResponse } from '@iitd-bus/shared';
+import { DIRECTION_LABELS, idTypeText, type ManifestResponse } from '@iitd-bus/shared';
 import { API_BASE, api } from '../api/client';
 import { ErrorState, LoadingSkeleton } from '../components/ui';
 import { formatIst, formatTravelDate, formatWallTime, routeText } from '../lib/format';
@@ -102,7 +102,7 @@ export function ManifestPage() {
                     </td>
                     <td className="border border-ink-900/15 px-2 py-2 text-xs">{p.purpose}</td>
                     <td className="border border-ink-900/15 px-2 py-2">
-                      {ID_TYPE_LABELS[p.idType]}
+                      {idTypeText(p.idType, p.idTypeDetail)}
                     </td>
                     <td className="border border-ink-900/15 px-2 py-2 font-mono">
                       {p.idNumber ?? '-'}

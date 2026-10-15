@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ID_TYPE_LABELS,
+  idTypeText,
   PURPOSE_LABELS,
   type AdminBookingDto,
   type BookingStatus,
@@ -172,7 +172,7 @@ export function BookingsPage() {
                   <Td className="text-xs">
                     <p className="tabular-nums">{b.phone ?? '-'}</p>
                     <p>
-                      {ID_TYPE_LABELS[b.idType]}:{' '}
+                      {idTypeText(b.idType, b.idTypeDetail)}:{' '}
                       <span className="font-mono">{b.idNumber ?? '(erased)'}</span>
                     </p>
                   </Td>

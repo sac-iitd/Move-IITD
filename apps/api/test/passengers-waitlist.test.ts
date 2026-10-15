@@ -114,6 +114,107 @@ describe('booking details and guests', () => {
     expect(rows.map((r) => r.recipient)).toEqual(['guest@example.com', 'u1@iitd.ac.in']);
     expect(rows.every((r) => r.type === 'BOOKING_CONFIRMATION')).toBe(true);
   });
+
+  it('books yourself and a guest, or two guests, from one form', async () => {
+    const s = await signIn(t, identity('u1'));
+    const trip = await tripOn(MON, '10:00');
+    const party = {
+      bookerName: 'User u1',
+      phone: '9876543210',
+      passengers: [
+        { passengerType: 'SELF', purpose: 'ACADEMIC' },
+        {
+          passengerType: 'GUEST',
+          purpose: 'ADMINISTRATIVE',
+          guest: {
+            name: 'Meera Sharma',
+            email: 'meera@example.com',
+            phone: '9123456789',
+            idType: 'PASSPORT',
+            idNumber: 'Z1234567',
+          },
+        },
+      ],
+    };
+    const res = await s.agent
+      .post(`/api/v1/trips/${trip.id}/bookings`)
+      .set('X-CSRF-Token', s.csrf)
+      .set('Idempotency-Key', 'party-0001')
+      .send(party);
+    expect(res.status).toBe(201);
+    expect(res.body.bookings).toHaveLength(2);
+    expect(res.body.bookings[0].passenger).toMatchObject({ type: 'SELF', name: 'User u1' });
+    expect(res.body.bookings[1].passenger).toMatchObject({
+      type: 'GUEST',
+      name: 'Meera Sharma',
+      idType: 'PASSPORT',
+      guestPhone: '9123456789',
+    });
+    const recipients = (await db.notificationOutbox.findMany()).map((r) => r.recipient).sort();
+    expect(recipients).toEqual(['meera@example.com', 'u1@iitd.ac.in', 'u1@iitd.ac.in']);
+
+    const replay = await s.agent
+      .post(`/api/v1/trips/${trip.id}/bookings`)
+      .set('X-CSRF-Token', s.csrf)
+      .set('Idempotency-Key', 'party-0001')
+      .send(party);
+    expect(replay.status).toBe(200);
+    expect(await db.booking.count()).toBe(2);
+
+    const other = await book(s, (await tripOn(MON, '07:30')).id, {
+      bookerName: 'User u1',
+      phone: '9876543210',
+      passengers: [
+        {
+          passengerType: 'GUEST',
+          purpose: 'OTHER',
+          purposeDetail: 'Campus visit',
+          guest: {
+            name: 'Arun Das',
+            email: 'arun@example.com',
+            phone: '9988776655',
+            idType: 'OTHER',
+            idTypeDetail: 'Voter ID',
+            idNumber: 'ABC1234567',
+          },
+        },
+        {
+          passengerType: 'GUEST',
+          purpose: 'ACADEMIC',
+          guest: {
+            name: 'Leela Das',
+            email: 'leela@example.com',
+            phone: '9988776644',
+            idType: 'DRIVING_LICENCE',
+            idNumber: 'MH0120190012345',
+          },
+        },
+      ],
+    });
+    expect(other.status).toBe(201);
+    expect(other.body.bookings.map((b: { passenger: { name: string } }) => b.passenger.name)).toEqual([
+      'Arun Das',
+      'Leela Das',
+    ]);
+    const stored = await db.booking.findFirstOrThrow({ where: { passengerName: 'Arun Das' } });
+    expect(stored.idTypeDetail).toBe('Voter ID');
+    const copies = await db.notificationOutbox.findMany({
+      where: { tripId: (await tripOn(MON, '07:30')).id },
+    });
+    expect(copies.map((r) => r.recipient).sort()).toEqual([
+      'arun@example.com',
+      'leela@example.com',
+      'u1@iitd.ac.in',
+      'u1@iitd.ac.in',
+    ]);
+
+    const tiny = await tripOn(MON, '17:00');
+    await db.trip.update({ where: { id: tiny.id }, data: { capacity: 1, bookedCount: 0 } });
+    const tooMany = await book(s, tiny.id, party);
+    expect(tooMany.status).toBe(409);
+    expect(tooMany.body.error.code).toBe('TRIP_FULL');
+    expect(await db.booking.count({ where: { tripId: tiny.id } })).toBe(0);
+  });
 });
 
 describe('two seats per account per trip', () => {
@@ -391,7 +492,7 @@ describe('driver manifest and exports', () => {
     await book(s, (await tripOn(MON, '10:00')).id, guestBooking());
     const csv = await admin.agent.get('/api/v1/admin/bookings/export.csv');
     expect(csv.text).toContain('Passenger name,Passenger type');
-    expect(csv.text).toContain('Aadhaar,234567890123');
+    expect(csv.text).toContain('Aadhaar card,234567890123');
   });
 });
 

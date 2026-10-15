@@ -94,6 +94,7 @@ export function toPassengerDto(b: Booking, kerberosId?: string): PassengerDto {
     purpose: b.purpose as Purpose,
     purposeDetail: b.purposeDetail,
     idType,
+    idTypeDetail: b.idTypeDetail,
     idNumberMasked: full ? (idType === 'IITD_ID' ? full : maskIdNumber(idType, full)) : null,
   };
 }

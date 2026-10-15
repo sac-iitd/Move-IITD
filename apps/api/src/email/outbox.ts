@@ -24,6 +24,7 @@ export interface NotificationPayload {
     purpose: string;
     purposeDetail: string | null;
     idType: string;
+    idTypeDetail?: string | null;
     idMasked: string | null;
     bookedBy: string;
   };

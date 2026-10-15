@@ -132,12 +132,29 @@ export const PURPOSE_LABELS: Record<Purpose, string> = {
   OTHER: 'Other institutional activity',
 };
 
-/** IITD_ID is used for account holders (number = Kerberos id); guests declare Aadhaar or PAN. */
-export const ID_TYPES = ['IITD_ID', 'AADHAAR', 'PAN'] as const;
+/** IITD_ID is the account holder (number = Kerberos id). Guests bring a government photo ID. */
+export const ID_TYPES = [
+  'IITD_ID',
+  'AADHAAR',
+  'PAN',
+  'DRIVING_LICENCE',
+  'PASSPORT',
+  'OTHER',
+] as const;
 export type IdType = (typeof ID_TYPES)[number];
-export const GUEST_ID_TYPES = ['AADHAAR', 'PAN'] as const;
+export const GUEST_ID_TYPES = ['AADHAAR', 'PAN', 'DRIVING_LICENCE', 'PASSPORT', 'OTHER'] as const;
+export type GuestIdType = (typeof GUEST_ID_TYPES)[number];
 export const ID_TYPE_LABELS: Record<IdType, string> = {
   IITD_ID: 'IIT Delhi ID card',
-  AADHAAR: 'Aadhaar',
+  AADHAAR: 'Aadhaar card',
   PAN: 'PAN card',
+  DRIVING_LICENCE: 'Driving licence',
+  PASSPORT: 'Passport',
+  OTHER: 'Any other government photo ID',
 };
+
+/** Label shown on emails, the manifest and the confirmation, including the document name for "other". */
+export function idTypeText(type: IdType, detail?: string | null): string {
+  const label = ID_TYPE_LABELS[type] ?? type;
+  return type === 'OTHER' && detail ? `${label}: ${detail}` : label;
+}

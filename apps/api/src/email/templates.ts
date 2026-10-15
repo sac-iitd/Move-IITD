@@ -1,6 +1,6 @@
 import {
   CAMPUS_LABELS,
-  ID_TYPE_LABELS,
+  idTypeText,
   PURPOSE_LABELS,
   formatIst,
   formatTravelDate,
@@ -57,7 +57,7 @@ function passengerSection(p: NotificationPayload): Section | null {
   if (!x) return null;
   const rows: Rows = [
     ['Passenger', x.type === 'GUEST' ? `${x.name} (guest)` : x.name],
-    ['ID proof to carry', ID_TYPE_LABELS[x.idType as IdType] ?? x.idType],
+    ['ID proof to carry', idTypeText(x.idType as IdType, x.idTypeDetail)],
   ];
   if (x.idMasked) rows.push(['ID number', x.idMasked]);
   if (x.phone) rows.push(['Emergency contact', x.phone]);
@@ -140,7 +140,7 @@ export function renderEmail(
         `${p.passenger?.bookedBy ?? 'An IIT Delhi member'} booked this trip for you. Contact them for any changes.`,
       ]
     : [];
-  const idNote = `Please bring your valid ID proof (${ID_TYPE_LABELS[(p.passenger?.idType ?? 'IITD_ID') as IdType]}). It will be checked when boarding.`;
+  const idNote = `Please bring your valid ID proof (${idTypeText((p.passenger?.idType ?? 'IITD_ID') as IdType, p.passenger?.idTypeDetail)}). It will be checked when boarding.`;
   const cancelNote = p.cancellationDeadline
     ? `Plans changed? Cancel from "My bookings" before ${formatIst(p.cancellationDeadline)} IST so someone on the waiting list gets the seat.`
     : 'Plans changed? Cancel from "My bookings" before 2:00 PM IST on the day before travel (Friday for Monday trips).';

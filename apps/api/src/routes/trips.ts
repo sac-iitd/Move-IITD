@@ -3,18 +3,20 @@ import { z } from 'zod';
 import {
   addDays,
   createBookingSchema,
+  createBookingsSchema,
   istDateOf,
   idempotencyKeySchema,
   routeOf,
   tripsQuerySchema,
   type CreateBookingResponse,
+  type CreateBookingsResponse,
   type PassengerType,
   type TripDto,
   type TripsResponse,
 } from '@iitd-bus/shared';
 import type { AppContext } from '../context';
 import { requireAuth } from '../auth/middleware';
-import { createBooking } from '../bookings/service';
+import { createBooking, createBookings } from '../bookings/service';
 import { toBookingDto, toTripDto, waitlistCounts } from '../bookings/dto';
 import { HttpError } from '../lib/errors';
 import { bookingRateLimit } from '../lib/rate-limit';
@@ -98,15 +100,40 @@ export function tripsRouter(ctx: AppContext) {
   });
 
   /**
-   * Books a seat (or a waiting-list place with joinWaitlist). Send a unique Idempotency-Key
+   * Books a seat, or everyone named in one form (`passengers`). Send a unique Idempotency-Key
    * header per attempt; retries with the same key return the original booking (200).
    */
   r.post('/:tripId/bookings', bookingRateLimit(ctx), async (req, res) => {
     const tripId = idParam.parse(req.params.tripId);
     const rawKey = req.get('idempotency-key');
     const idempotencyKey = rawKey === undefined ? undefined : idempotencyKeySchema.parse(rawKey);
-    const request = createBookingSchema.parse(req.body ?? {});
     const now = ctx.now();
+    const body = req.body ?? {};
+    if (body && typeof body === 'object' && 'passengers' in body) {
+      const request = createBookingsSchema.parse(body);
+      const result = await createBookings(ctx.prisma, {
+        user: req.auth!.user,
+        tripId,
+        request,
+        idempotencyKey,
+        now,
+      });
+      if (result.created) {
+        req.log.info(
+          { bookingIds: result.bookings.map((b) => b.id), tripId },
+          'Bookings created',
+        );
+      }
+      const response: CreateBookingsResponse = {
+        bookings: result.bookings.map((b, i) =>
+          toBookingDto(b, now, result.waitlistPositions[i] ?? null),
+        ),
+        created: result.created,
+      };
+      res.status(result.created ? 201 : 200).json(response);
+      return;
+    }
+    const request = createBookingSchema.parse(body);
     const result = await createBooking(ctx.prisma, {
       user: req.auth!.user,
       tripId,
@@ -120,11 +147,11 @@ export function tripsRouter(ctx: AppContext) {
         'Booking created',
       );
     }
-    const body: CreateBookingResponse = {
+    const response: CreateBookingResponse = {
       booking: toBookingDto(result.booking, now, result.waitlistPosition),
       created: result.created,
     };
-    res.status(result.created ? 201 : 200).json(body);
+    res.status(result.created ? 201 : 200).json(response);
   });
 
   return r;

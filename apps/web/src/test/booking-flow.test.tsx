@@ -23,7 +23,7 @@ describe('dashboard booking flow', () => {
       }),
       'POST /trips/trip1/bookings': () => ({
         status: 201,
-        body: { booking: bookingFixture(), created: true },
+        body: { bookings: [bookingFixture()], created: true },
       }),
     });
     renderWithProviders(<DashboardPage />, { route: '/dashboard' });
@@ -44,10 +44,10 @@ describe('dashboard booking flow', () => {
     expect(headers['X-CSRF-Token']).toBe('csrf-token-abc');
     expect(headers['Idempotency-Key']).toMatch(/^[a-f0-9]{32}$/);
     expect(JSON.parse(post.init.body as string)).toMatchObject({
-      passengerType: 'SELF',
+      bookerName: 'Asha Kumar',
       phone: '9876543210',
-      purpose: 'ACADEMIC',
       joinWaitlist: false,
+      passengers: [{ passengerType: 'SELF', purpose: 'ACADEMIC' }],
     });
   });
 
@@ -61,14 +61,14 @@ describe('dashboard booking flow', () => {
     renderWithProviders(<DashboardPage />, { route: '/dashboard' });
     await userEvent.click(await screen.findByRole('button', { name: /Book seat: 10:00 AM/ }));
     const dialog = screen.getByRole('dialog', { name: 'Book a seat' });
-    await userEvent.click(within(dialog).getByLabelText('Someone else'));
-    await userEvent.type(within(dialog).getByLabelText(/ID number/), '1234');
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'No' }));
+    await userEvent.type(within(dialog).getByLabelText('ID number'), '1234');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm booking' }));
     expect(
-      within(dialog).getByText('Enter a valid 10-digit Indian mobile number'),
-    ).toBeInTheDocument();
+      within(dialog).getAllByText('Enter a valid 10-digit Indian mobile number').length,
+    ).toBeGreaterThan(0);
     expect(within(dialog).getByText(/Enter a valid Aadhaar/)).toBeInTheDocument();
-    expect(within(dialog).getByText('Enter the passenger name')).toBeInTheDocument();
+    expect(within(dialog).getByText('Enter the full name as on the ID')).toBeInTheDocument();
     expect(calls.some((c) => c.key.startsWith('POST'))).toBe(false);
   });
 
@@ -91,7 +91,7 @@ describe('dashboard booking flow', () => {
       'POST /trips/trip1/bookings': () => ({
         status: 201,
         body: {
-          booking: bookingFixture({ status: 'WAITLISTED', waitlistPosition: 3 }),
+          bookings: [bookingFixture({ status: 'WAITLISTED', waitlistPosition: 3 })],
           created: true,
         },
       }),

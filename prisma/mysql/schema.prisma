@@ -148,13 +148,15 @@ model Booking {
   passengerEmail     String?
   /// Emergency contact phone (required). Erased after PII_RETENTION_DAYS.
   phone              String?
-  /// Guest's own phone (optional). Erased after PII_RETENTION_DAYS.
+  /// Guest's own phone. Required for new guest bookings. Erased after PII_RETENTION_DAYS.
   guestPhone         String?
   /// ACADEMIC, ADMINISTRATIVE or OTHER.
   purpose            String
   purposeDetail      String? @db.VarChar(200)
-  /// IITD_ID (self; number = Kerberos id), AADHAAR or PAN (guests).
+  /// IITD_ID (self; number = Kerberos id), or a guest's government photo ID.
   idType             String
+  /// Document name when idType is OTHER, for example "Voter ID".
+  idTypeDetail       String? @db.VarChar(60)
   /// Guest ID number, AES-256-GCM encrypted. Erased after PII_RETENTION_DAYS.
   idNumberEnc        String? @db.VarChar(512)
   piiPurgedAt        DateTime?

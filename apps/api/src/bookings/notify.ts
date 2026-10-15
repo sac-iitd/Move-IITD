@@ -44,6 +44,7 @@ export async function notifyBooking(
       purpose: p.purpose,
       purposeDetail: p.purposeDetail,
       idType: p.idType,
+      idTypeDetail: p.idTypeDetail,
       idMasked: p.idNumberMasked,
       bookedBy: owner.name,
     },
