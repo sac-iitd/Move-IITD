@@ -72,7 +72,7 @@ export function Dialog({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-950/60 p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ink-950/60 p-3 sm:p-4">
       <div
         className="absolute inset-0"
         aria-hidden="true"
@@ -80,20 +80,28 @@ export function Dialog({
           if (!busy) onClose();
         }}
       />
+      {/*
+        min-h-0 lets this column shrink inside the viewport. Without it the
+        panel grows past the screen, the page behind is locked, and the
+        Confirm button cannot be reached.
+      */}
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-6 shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl"
+        className="relative flex max-h-[calc(100vh-1.5rem)] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        style={{ maxHeight: 'calc(100dvh - 1.5rem)' }}
       >
-        <h2 id={titleId} className="text-lg font-bold text-ink-900">
+        <h2 id={titleId} className="shrink-0 px-6 pt-6 text-lg font-bold text-ink-900">
           {title}
         </h2>
-        <div className="mt-3 text-sm text-ink-800">{children}</div>
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-2 text-sm text-ink-800">
+          {children}
+        </div>
         {footer && (
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-ink-900/10 px-6 py-4 sm:flex-row sm:justify-end">
             {footer}
           </div>
         )}
