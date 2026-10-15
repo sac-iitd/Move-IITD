@@ -32,6 +32,9 @@ export function LandingPage() {
             <p className="text-sm font-semibold uppercase tracking-widest text-brand-300">
               Student Affairs Council · IIT Delhi
             </p>
+            <p className="mt-1 text-sm text-brand-100/90">
+              In collaboration with the Transport Office
+            </p>
             <h1 className="mt-2 text-2xl font-bold leading-tight text-white sm:text-3xl">
               MoveIITD: Hauz Khas (Delhi) ↔ Sonipat (Haryana) Intercampus Vehicle Service
             </h1>
