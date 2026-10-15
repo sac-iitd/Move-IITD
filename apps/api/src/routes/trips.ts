@@ -62,9 +62,14 @@ export function tripsRouter(ctx: AppContext) {
     const q = tripsQuerySchema.parse(req.query);
     const now = ctx.now();
     const today = istDateOf(now);
-    const from = q.from && q.from > today ? q.from : today;
+    // Booking closes at 4 PM the day before, so today's departures are never bookable.
+    const earliest = addDays(today, 1);
+    const from = q.from && q.from > today ? q.from : earliest;
     const to = q.to ?? addDays(from, 13);
-    if (to < from) throw new HttpError('VALIDATION_ERROR', '`to` must be on or after today');
+    if (to < from) {
+      res.set('Cache-Control', 'no-store').json({ trips: [], serverTime: now.toISOString() });
+      return;
+    }
     if (addDays(from, MAX_RANGE_DAYS) < to) {
       throw new HttpError('VALIDATION_ERROR', `Date range is limited to ${MAX_RANGE_DAYS} days`);
     }

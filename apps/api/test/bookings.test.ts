@@ -66,6 +66,9 @@ describe('trip listing', () => {
       '17:00',
     ]);
 
+    const today = await s.agent.get('/api/v1/trips?from=2026-10-14&to=2026-10-14');
+    expect(today.body.trips).toHaveLength(0);
+
     const weekend = await s.agent.get('/api/v1/trips?from=2026-10-17&to=2026-10-18');
     expect(weekend.body.trips).toHaveLength(0);
 

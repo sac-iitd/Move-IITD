@@ -20,9 +20,10 @@ import { formatIst, formatTravelDate } from '../lib/format';
 
 const HORIZON_DAYS = 13;
 
+/** Bookable dates start tomorrow. Today's trips have already closed (4 PM the day before). */
 function upcomingOperationalDays(today: string): string[] {
   const out: string[] = [];
-  for (let i = 0; i <= HORIZON_DAYS; i++) {
+  for (let i = 1; i <= HORIZON_DAYS; i++) {
     const d = addDays(today, i);
     if (isOperationalDay(d)) out.push(d);
   }
@@ -45,8 +46,10 @@ export function DashboardPage() {
   const direction = (params.get('direction') as Direction | null) ?? null;
   const [booking, setBooking] = useState<TripDto | null>(null);
 
-  const from = date ?? today;
-  const to = date ?? addDays(today, HORIZON_DAYS);
+  const earliest = addDays(today, 1);
+  const selectedDate = date && date >= earliest ? date : null;
+  const from = selectedDate ?? earliest;
+  const to = selectedDate ?? addDays(today, HORIZON_DAYS);
   const trips = useQuery({
     queryKey: ['trips', from, to, direction],
     queryFn: () => {
@@ -108,8 +111,8 @@ export function DashboardPage() {
           >
             <button
               type="button"
-              className={chip(!date)}
-              aria-pressed={!date}
+              className={chip(!selectedDate)}
+              aria-pressed={!selectedDate}
               onClick={() => setFilter('date', null)}
             >
               All upcoming
@@ -118,17 +121,15 @@ export function DashboardPage() {
               <button
                 key={d}
                 type="button"
-                className={chip(date === d)}
-                aria-pressed={date === d}
+                className={chip(selectedDate === d)}
+                aria-pressed={selectedDate === d}
                 onClick={() => setFilter('date', d)}
               >
-                {d === today
-                  ? 'Today'
-                  : formatIst(istToUtc(d, '12:00'), {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                    })}
+                {formatIst(istToUtc(d, '12:00'), {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
               </button>
             ))}
           </div>
