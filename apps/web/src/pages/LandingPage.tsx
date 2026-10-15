@@ -1,6 +1,6 @@
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { DIRECTION_LABELS, type PublicScheduleResponse } from '@iitd-bus/shared';
+import { DIRECTIONS, DIRECTION_LABELS, type PublicScheduleResponse } from '@iitd-bus/shared';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { DirectionBadge } from '../components/Badges';
@@ -33,12 +33,12 @@ export function LandingPage() {
               Student Affairs Council · IIT Delhi
             </p>
             <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-4xl">
-              MoveIITD: Delhi ↔ Sonipat campus bus
+              MoveIITD campus shuttle
             </h1>
             <p className="mt-3 max-w-xl text-brand-100/90">
-              Reserve a seat on the shuttle between IIT Delhi's Delhi campus and the Sonipat campus.
-              Buses run Monday to Friday. Sign in with your IIT Delhi Kerberos account to
-              book.
+              Reserve a seat on the shuttle between IIT Delhi Hauz Khas Campus and IIT Delhi
+              Sonipat Campus. Buses run Monday to Friday. Sign in with your IIT Delhi Kerberos
+              account to book.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button type="button" className="btn-gold px-6 text-base" onClick={() => login()}>
@@ -64,57 +64,62 @@ export function LandingPage() {
           ) : schedule.isError ? (
             <Alert tone="warning">The timetable could not be loaded right now.</Alert>
           ) : (
-            <div className="card overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">Weekday departures</caption>
-                <thead className="bg-brand-100 text-ink-900">
-                  <tr>
-                    <th scope="col" className="px-4 py-2">
-                      Departure
-                    </th>
-                    <th scope="col" className="px-4 py-2">
-                      Route
-                    </th>
-                    <th scope="col" className="px-4 py-2">
-                      Service
-                    </th>
-                    <th scope="col" className="px-4 py-2">
-                      Seats
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...services]
-                    .sort((a, b) => a.departureTime.localeCompare(b.departureTime))
-                    .map((s) => (
-                      <tr
-                        key={`${s.serviceLabel}-${s.departureTime}-${s.origin}`}
-                        className="border-t border-ink-900/10"
-                      >
-                        <td className="px-4 py-2 font-semibold tabular-nums">
-                          {formatWallTime(s.departureTime)}
-                          {s.timeProvisional && (
-                            <span className="ml-1 text-amber-800" title="Time to be confirmed">
-                              *
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2">
-                          <DirectionBadge direction={s.direction} />
-                          <span className="sr-only"> {DIRECTION_LABELS[s.direction]}</span>
-                        </td>
-                        <td className="px-4 py-2">{s.serviceLabel}</td>
-                        <td className="px-4 py-2 tabular-nums">{s.capacity}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                {DIRECTIONS.map((direction) => (
+                  <div key={direction} className="card overflow-x-auto">
+                    <h3 className="px-4 pt-3 pb-2">
+                      <DirectionBadge direction={direction} />
+                    </h3>
+                    <table className="w-full text-left text-sm">
+                      <caption className="sr-only">
+                        Weekday departures, {DIRECTION_LABELS[direction]}
+                      </caption>
+                      <thead className="bg-brand-100 text-ink-900">
+                        <tr>
+                          <th scope="col" className="px-4 py-2">
+                            Departure
+                          </th>
+                          <th scope="col" className="px-4 py-2">
+                            Service
+                          </th>
+                          <th scope="col" className="px-4 py-2">
+                            Seats
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {services
+                          .filter((s) => s.direction === direction)
+                          .sort((a, b) => a.departureTime.localeCompare(b.departureTime))
+                          .map((s) => (
+                            <tr
+                              key={`${s.serviceLabel}-${s.departureTime}-${s.origin}`}
+                              className="border-t border-ink-900/10"
+                            >
+                              <td className="px-4 py-2 font-semibold tabular-nums">
+                                {formatWallTime(s.departureTime)}
+                                {s.timeProvisional && (
+                                  <span className="ml-1 text-amber-800" title="Time to be confirmed">
+                                    *
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2">{s.serviceLabel}</td>
+                              <td className="px-4 py-2 tabular-nums">{s.capacity}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
               {provisional && (
-                <p className="border-t border-ink-900/10 px-4 py-2 text-xs text-amber-900">
+                <p className="mt-2 text-xs text-amber-900">
                   * Departure time awaiting confirmation by the transport office.
                 </p>
               )}
-            </div>
+            </>
           )}
         </div>
       </section>
@@ -126,35 +131,41 @@ export function LandingPage() {
         <div className="card p-5">
           <h3 className="font-bold">When can I book?</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            <li>Booking opens 7 days before travel, at midnight IST.</li>
-            <li>Booking closes at 4:00 PM IST the day before travel.</li>
+            <li>Booking opens 7 days before travel.</li>
+            <li>Booking will close at 4:00 PM IST the day before travel.</li>
             <li>
-              <strong>Monday trips close on Sunday at 4:00 PM.</strong>
+              <strong>Booking for Monday trips closes on Friday at 4:00 PM.</strong>
             </li>
-            <li>Regular buses run Monday to Friday. Special buses may run on other days.</li>
+            <li>Regular bus booking will be allowed from Monday to Friday.</li>
           </ul>
         </div>
         <div className="card p-5">
-          <h3 className="font-bold">Seats, guests &amp; ID</h3>
+          <h3 className="font-bold">Seats, Guests &amp; ID Requirements</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            <li>Up to 2 seats per person per trip, for yourself and/or a guest.</li>
-            <li>Guests need an Aadhaar or PAN number and must carry that ID.</li>
-            <li>Carry your IIT Delhi ID card. IDs are checked when boarding.</li>
-            <li>You get a booking reference and a confirmation email.</li>
+            <li>Up to 2 seats per person per trip may be booked for yourself and/or a guest.</li>
+            <li>Bookings for non-IIT Delhi visitors are permitted only for official purposes.</li>
+            <li>IIT Delhi members must carry their valid, institute-issued ID card.</li>
+            <li>
+              Visitors must carry a valid government-issued photo ID. IDs will be verified during
+              boarding.
+            </li>
+            <li>
+              A booking reference and confirmation email will be provided upon successful booking.
+            </li>
+            <li>
+              Bookings can be cancelled until 2:00 PM on the day before travel (Friday for Monday
+              trips).
+            </li>
           </ul>
         </div>
         <div className="card p-5">
-          <h3 className="font-bold">Cancellations &amp; waiting list</h3>
+          <h3 className="font-bold">Waiting list</h3>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            <li>Cancel online until 2:00 PM the day before travel.</li>
             <li>
               Full trip? Join the waiting list. The first person gets the next free seat
               automatically.
             </li>
-            <li>
-              Seats can be given from the waiting list until booking closes (4:00 PM the day
-              before).
-            </li>
+            <li>Seats can be given from the waiting list until booking closes.</li>
             <li>Seat numbers are not assigned.</li>
           </ul>
         </div>

@@ -319,8 +319,9 @@ export async function removeClosure(
 
 /**
  * Adds a one-off trip on any date (weekends and holidays included). Booking deadlines
- * default to the standard rules (open 7 days before at 00:00, close 4 PM the day before)
- * and can be overridden, e.g. for a bus announced at short notice.
+ * default to the standard rules (open 7 days before at 00:00, close 4 PM the calendar day
+ * before, even when that is a weekend) and can be overridden, e.g. for a bus announced at
+ * short notice.
  */
 export async function createSpecialTrip(
   prisma: PrismaClient,
@@ -329,6 +330,7 @@ export async function createSpecialTrip(
   const { trip: t, actor, now } = input;
   const w = computeTripWindows(t.travelDate, {
     ...SCHEDULE_DEFAULTS,
+    cutoffRule: 'PREVIOUS_CALENDAR_DAY',
     departureTime: t.departureTime,
   });
   const opens = t.bookingOpensAt ? new Date(t.bookingOpensAt) : w.bookingOpensAt;

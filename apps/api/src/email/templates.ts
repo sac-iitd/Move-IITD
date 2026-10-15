@@ -143,7 +143,7 @@ export function renderEmail(
   const idNote = `Please bring your valid ID proof (${ID_TYPE_LABELS[(p.passenger?.idType ?? 'IITD_ID') as IdType]}). It will be checked when boarding.`;
   const cancelNote = p.cancellationDeadline
     ? `Plans changed? Cancel from "My bookings" before ${formatIst(p.cancellationDeadline)} IST so someone on the waiting list gets the seat.`
-    : 'Plans changed? Cancel from "My bookings" before 2:00 PM IST on the day before travel.';
+    : 'Plans changed? Cancel from "My bookings" before 2:00 PM IST on the day before travel (Friday for Monday trips).';
 
   switch (type) {
     case 'BOOKING_CONFIRMATION': {
@@ -167,7 +167,7 @@ export function renderEmail(
         `${greeting} this trip is full, so you've been added to the waiting list${p.waitlistPosition ? ` at position #${p.waitlistPosition}` : ''}.`,
         sections(),
         [
-          'If a seat frees up before booking closes (4:00 PM IST the day before travel), it is given automatically to the first person on the list and you will get a confirmation email.',
+          'If a seat frees up before booking closes (4:00 PM IST the day before travel; Friday for Monday trips), it is given automatically to the first person on the list and you will get a confirmation email.',
           'If no seat frees up, your waiting-list entry is closed automatically and you will be informed.',
           'You can leave the waiting list any time from "My bookings".',
           ...guestNote,

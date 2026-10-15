@@ -219,7 +219,7 @@ export function SpecialTripDialog({ open, onClose }: { open: boolean; onClose: (
     >
       <p>
         Runs on any date, including weekends and holidays. Booking normally opens 7 days before and
-        closes at 4 PM the day before.
+        closes at 4 PM the calendar day before (weekends included).
       </p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div>

@@ -33,8 +33,8 @@ All times are **Asia/Kolkata (IST)**. Enforced by the API; the UI only mirrors t
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Service days      | Monday–Friday (regular). Admins can add **special buses** on any day and **stop buses on holidays**.                                                                                          |
 | Booking opens     | 7 calendar days before travel, 00:00 IST                                                                                                                                                      |
-| Booking closes    | 4:00 PM IST the **day before** travel — **Monday trips close Sunday 4:00 PM**                                                                                                                 |
-| Self-cancellation | until **2:00 PM IST the day before** travel (booking stays open until 4 PM)                                                                                                                   |
+| Booking closes    | 4:00 PM IST the **working day before** travel: **Monday trips close Friday 4:00 PM**. Special buses close the calendar day before.                                                            |
+| Self-cancellation | until **2:00 PM IST** on that same day (Friday for Monday trips); booking stays open until 4 PM                                                                                               |
 | Seats per account | max **2 per trip** (confirmed + waitlisted), any mix of self and guests; at most one for yourself                                                                                             |
 | Waiting list      | when a trip is full; on a cancellation the **first person is auto-confirmed** and emailed; promotion runs until booking closes (4 PM the day before); leftover entries are closed and emailed |
 | Booking details   | phone (10-digit Indian mobile, prefilled), purpose (Academic / Administrative / Other institutional activity + description)                                                                   |
@@ -259,7 +259,7 @@ npm run typecheck && npm run lint && npm run format:check
 MYSQL_TEST_URL="mysql://user:pass@127.0.0.1:3306" npm run test:mysql   # whole API suite on MySQL (new DB per run)
 ```
 
-Covered: booking windows and IST boundaries, Sunday 4 PM / 2 PM cutoffs, capacity under concurrent
+Covered: booking windows and IST boundaries, Friday 4 PM / 2 PM cutoffs for Monday trips, capacity under concurrent
 requests (HTTP and parallel DB connections), the 2-seat limit under parallel requests, waitlist
 promotion/expiry, guest ID encryption, blocks, holidays, special buses, manifest/export auditing,
 data retention, KEBROS client, sessions/CSRF, admin authorization on every endpoint, emails.

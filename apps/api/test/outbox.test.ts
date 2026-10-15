@@ -34,7 +34,16 @@ async function setupBooking(email: string | null = 'asha@iitd.ac.in') {
     request: SELF_BOOKING,
     now: NOW,
   });
+  await pinQueuedToTestClock();
   return { user, trip, booking };
+}
+
+/** New outbox rows default nextAttemptAt to the real clock, which is later than the test clock. */
+function pinQueuedToTestClock() {
+  return db.notificationOutbox.updateMany({
+    where: { status: 'PENDING', attemptCount: 0 },
+    data: { nextAttemptAt: NOW },
+  });
 }
 
 beforeEach(async () => {
@@ -82,8 +91,8 @@ describe('confirmation email', () => {
       booking.bookingReference,
       'Mon, 19 Oct, 2026',
       '10:00 AM IST',
-      'IIT Delhi (Delhi campus)',
-      'Sonipat campus',
+      'IIT Delhi Hauz Khas Campus',
+      'IIT Delhi Sonipat Campus',
       'VAN (13 seats)',
       'Please bring your valid ID proof (IIT Delhi ID card)',
       'Emergency contact: 9876543210',
@@ -182,6 +191,7 @@ describe('cancellation emails', () => {
       asAdmin: false,
       now: NOW,
     });
+    await pinQueuedToTestClock();
     await processOutbox(deps);
     expect(mailer.sent.map((m) => m.subject.split(':')[0])).toEqual([
       'Booking confirmed',

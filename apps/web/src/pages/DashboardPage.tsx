@@ -91,8 +91,8 @@ export function DashboardPage() {
         </div>
       )}
       <p className="mb-4 text-xs text-ink-800">
-        Booking opens 7 days ahead and closes at 4:00 PM the day before travel. Cancel by 2:00 PM
-        the day before. Full trip? Join the waiting list. The first person gets the next free seat
+        Booking opens 7 days ahead and closes at 4:00 PM the day before travel (Friday for Monday
+        trips). Cancel by 2:00 PM on that day. Full trip? Join the waiting list. The first person gets the next free seat
         automatically.
       </p>
 

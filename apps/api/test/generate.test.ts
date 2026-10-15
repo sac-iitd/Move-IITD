@@ -36,10 +36,10 @@ describe('service templates', () => {
     ]);
   });
 
-  it('seeds the confirmed 1:30 PM time and the Sunday-4-PM Monday cutoff', async () => {
+  it('seeds the confirmed 1:30 PM time and the Friday-4-PM Monday cutoff', async () => {
     expect(await db.serviceTemplate.count({ where: { timeProvisional: true } })).toBe(0);
     const all = await db.serviceTemplate.findMany();
-    expect(all.every((t) => t.cutoffRule === 'PREVIOUS_CALENDAR_DAY')).toBe(true);
+    expect(all.every((t) => t.cutoffRule === 'PREVIOUS_OPERATIONAL_DAY')).toBe(true);
   });
 
   it('re-seeding is idempotent and does not overwrite admin edits', async () => {
@@ -101,7 +101,8 @@ describe('trip generation', () => {
     expect(t.capacity).toBe(24);
     expect(t.departureAt.toISOString()).toBe('2026-10-19T02:00:00.000Z');
     expect(t.bookingOpensAt.toISOString()).toBe('2026-10-11T18:30:00.000Z');
-    expect(t.bookingClosesAt.toISOString()).toBe('2026-10-18T10:30:00.000Z'); // Sunday 16:00 IST
+    expect(t.bookingClosesAt.toISOString()).toBe('2026-10-16T10:30:00.000Z'); // Friday 16:00 IST
+    expect(t.cancellationClosesAt.toISOString()).toBe('2026-10-16T08:30:00.000Z'); // Friday 14:00 IST
   });
 
   it('template changes affect only trips generated afterwards', async () => {

@@ -19,7 +19,7 @@ async function main() {
   if (to) {
     await mailer.send({
       to,
-      subject: 'IITD Sonipat Bus — test email',
+      subject: 'MoveIITD: test email',
       text: 'This is a test message from the bus booking system. Email delivery is working.',
       html: '<p>This is a test message from the bus booking system. Email delivery is working.</p>',
     });

@@ -207,7 +207,7 @@ describe('waiting list', () => {
     const first = await book(a, trip.id);
     await book(b, trip.id, { ...SELF_BOOKING, joinWaitlist: true });
 
-    t.clock.now = istToUtc('2026-10-18', '16:30'); // after booking closed (Sunday 4 PM)
+    t.clock.now = istToUtc('2026-10-16', '16:30'); // after booking closed (Friday 4 PM)
     await post(admin, `/api/v1/admin/bookings/${first.body.booking.reference}/cancel`, {
       reason: 'Unwell',
     });
@@ -247,21 +247,21 @@ describe('waiting list', () => {
 
 describe('2 PM cancellation cutoff', () => {
   it('allows cancelling until 2 PM the day before while booking stays open until 4 PM', async () => {
-    const trip = await tripOn(MON, '10:00');
+    const trip = await tripOn('2026-10-20', '10:00');
     const s = await signIn(t, identity('u1'));
     const late = await signIn(t, identity('u2'));
     const res = await book(s, trip.id);
     expect(trip.cancellationClosesAt.toISOString()).toBe(
-      istToUtc('2026-10-18', '14:00').toISOString(),
+      istToUtc('2026-10-19', '14:00').toISOString(),
     );
 
-    t.clock.now = istToUtc('2026-10-18', '14:00');
+    t.clock.now = istToUtc('2026-10-19', '14:00');
     const cancel = await post(s, `/api/v1/bookings/${res.body.booking.reference}/cancel`);
     expect(cancel.body.error.code).toBe('CANCELLATION_CLOSED');
-    t.clock.now = istToUtc('2026-10-18', '15:00');
+    t.clock.now = istToUtc('2026-10-19', '15:00');
     expect((await book(late, trip.id)).status).toBe(201);
 
-    t.clock.now = new Date(istToUtc('2026-10-18', '14:00').getTime() - 1);
+    t.clock.now = new Date(istToUtc('2026-10-19', '14:00').getTime() - 1);
     expect((await post(s, `/api/v1/bookings/${res.body.booking.reference}/cancel`)).status).toBe(
       200,
     );

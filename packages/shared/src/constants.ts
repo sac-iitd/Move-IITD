@@ -7,16 +7,16 @@ export const CAMPUSES = ['DELHI', 'SONIPAT'] as const;
 export type Campus = (typeof CAMPUSES)[number];
 
 export const CAMPUS_LABELS: Record<Campus, string> = {
-  DELHI: 'IIT Delhi (Delhi campus)',
-  SONIPAT: 'Sonipat campus',
+  DELHI: 'IIT Delhi Hauz Khas Campus',
+  SONIPAT: 'IIT Delhi Sonipat Campus',
 };
 
 export const DIRECTIONS = ['DELHI_TO_SONIPAT', 'SONIPAT_TO_DELHI'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
 export const DIRECTION_LABELS: Record<Direction, string> = {
-  DELHI_TO_SONIPAT: 'Delhi → Sonipat',
-  SONIPAT_TO_DELHI: 'Sonipat → Delhi',
+  DELHI_TO_SONIPAT: 'IIT Delhi Hauz Khas Campus → IIT Delhi Sonipat Campus',
+  SONIPAT_TO_DELHI: 'IIT Delhi Sonipat Campus → IIT Delhi Hauz Khas Campus',
 };
 
 export function directionOf(origin: Campus, destination: Campus): Direction {
@@ -72,9 +72,9 @@ export const SCHEDULE_DEFAULTS = {
   bookingCloseTime: '16:00',
   // Institute decision (Oct 2026): self-cancellation closes at 2 PM the day before.
   cancellationCloseTime: '14:00',
-  // Institute decision (Oct 2026): every trip closes at 4 PM the calendar day before,
-  // so Monday trips close on Sunday at 4 PM.
-  cutoffRule: 'PREVIOUS_CALENDAR_DAY' as CutoffRule,
+  // Institute decision (Oct 2026): trips close at 4 PM the working day before,
+  // so Monday trips close on Friday at 4 PM (cancellation on Friday at 2 PM).
+  cutoffRule: 'PREVIOUS_OPERATIONAL_DAY' as CutoffRule,
 } as const;
 
 export const ERROR_CODES = [

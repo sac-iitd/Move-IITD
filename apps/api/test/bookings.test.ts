@@ -185,19 +185,22 @@ describe('booking', () => {
     expect((await book(s, target.id)).status).toBe(201);
   });
 
-  it('closes Monday trips at 4 PM IST on Sunday (bookable over the weekend)', async () => {
+  it('closes Monday trips at 4 PM IST on the preceding Friday', async () => {
     const target = await trip(MON, '07:30');
     const s1 = await signIn(t, identity('u1'));
     const s2 = await signIn(t, identity('u2'));
     const s3 = await signIn(t, identity('u3'));
-    t.clock.now = istToUtc('2026-10-17', '11:00'); // Saturday
+    const s4 = await signIn(t, identity('u4'));
+    t.clock.now = istToUtc('2026-10-15', '11:00'); // Thursday
     expect((await book(s1, target.id)).status).toBe(201);
-    t.clock.now = new Date(istToUtc('2026-10-18', '16:00').getTime() - 1); // Sunday 15:59:59.999
+    t.clock.now = new Date(istToUtc('2026-10-16', '16:00').getTime() - 1); // Friday 15:59:59.999
     expect((await book(s2, target.id)).status).toBe(201);
-    t.clock.now = istToUtc('2026-10-18', '16:00');
+    t.clock.now = istToUtc('2026-10-16', '16:00');
     const late = await book(s3, target.id);
     expect(late.status).toBe(409);
     expect(late.body.error.code).toBe('BOOKING_CLOSED');
+    t.clock.now = istToUtc('2026-10-18', '11:00'); // Sunday
+    expect((await book(s4, target.id)).body.error.code).toBe('BOOKING_CLOSED');
   });
 
   it('closes Tuesday trips at 4 PM IST on Monday', async () => {
