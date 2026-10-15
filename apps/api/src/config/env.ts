@@ -94,7 +94,7 @@ const envSchema = z
     SMTP_PASSWORD: z.string().optional(),
     /** Optional PEM file of extra CA certificates for the SMTP server (IITD uses an Entrust chain). */
     SMTP_CA_FILE: z.string().optional(),
-    EMAIL_FROM_NAME: z.string().default("MoveIITD Institute's Intercampus Vehicle Service"),
+    EMAIL_FROM_NAME: z.string().default('IIT Delhi Intercampus Vehicle Service'),
     EMAIL_FROM_ADDRESS: z.string().email().default('no-reply@localhost.test'),
     EMAIL_REPLY_TO: z.string().email().optional(),
 

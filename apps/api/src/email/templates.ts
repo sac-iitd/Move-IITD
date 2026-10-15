@@ -104,7 +104,7 @@ function layout(
   const html = `<!doctype html><html lang="en"><body style="margin:0;background:#fbf6ee;font-family:Segoe UI,Roboto,Arial,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" style="max-width:580px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e7cc97">
-<tr><td style="background:#2a1714;color:#d9ae5c;padding:16px 24px;font-size:18px;font-weight:700">MoveIITD Institute's Intercampus Vehicle Service</td></tr>
+<tr><td style="background:#2a1714;color:#d9ae5c;padding:16px 24px;font-size:18px;font-weight:700">IIT Delhi Intercampus Vehicle Service</td></tr>
 <tr><td style="padding:24px">
 <h1 style="margin:0 0 12px;font-size:20px;color:#2a1714">${esc(title)}</h1>
 <p style="margin:0;color:#2a1714">${esc(intro)}</p>
