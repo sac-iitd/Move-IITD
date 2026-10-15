@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Accessible modal dialog: focus moves into the dialog, Tab is trapped,
@@ -37,10 +38,7 @@ export function Dialog({
     const previous = document.activeElement as HTMLElement | null;
     const node = ref.current;
     (focusables()[0] ?? node)?.focus();
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = overflow;
       previous?.focus?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,41 +69,53 @@ export function Dialog({
   }, [open, busy, onClose]);
 
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ink-950/60 p-3 sm:p-4">
+  // Rendered on document.body, outside the animated page, so the window can
+  // scroll the whole dialog. Locking the page and capping the panel left the
+  // Confirm button below the screen with nowhere to scroll.
+  return createPortal(
+    <div
+      data-scroll-dialog="1"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
+        background: 'rgb(42 23 20 / 0.6)',
+      }}
+    >
       <div
-        className="absolute inset-0"
-        aria-hidden="true"
-        onClick={() => {
-          if (!busy) onClose();
+        style={{
+          display: 'flex',
+          minHeight: '100%',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          padding: '1rem',
         }}
-      />
-      {/*
-        min-h-0 lets this column shrink inside the viewport. Without it the
-        panel grows past the screen, the page behind is locked, and the
-        Confirm button cannot be reached.
-      */}
-      <div
-        ref={ref}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className="relative flex max-h-[calc(100vh-1.5rem)] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-        style={{ maxHeight: 'calc(100dvh - 1.5rem)' }}
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget && !busy) onClose();
+        }}
       >
-        <h2 id={titleId} className="shrink-0 px-6 pt-6 text-lg font-bold text-ink-900">
-          {title}
-        </h2>
-        <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-2 text-sm text-ink-800">
-          {children}
+        <div
+          ref={ref}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          className="my-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        >
+          <h2 id={titleId} className="text-lg font-bold text-ink-900">
+            {title}
+          </h2>
+          <div className="mt-3 text-sm text-ink-800">{children}</div>
+          {footer && (
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              {footer}
+            </div>
+          )}
         </div>
-        {footer && (
-          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-ink-900/10 px-6 py-4 sm:flex-row sm:justify-end">
-            {footer}
-          </div>
-        )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
