@@ -32,6 +32,8 @@ export interface NotificationPayload {
   cancellationDeadline?: string;
   waitlistPosition?: number;
   reason?: string | null;
+  /** The whole regular vehicle was paused, not just this one departure. */
+  temporarilyDiscontinued?: boolean;
   cancelledByAdmin?: boolean;
   /** The cancelled booking was a waiting-list entry (no seat was held). */
   wasWaitlisted?: boolean;

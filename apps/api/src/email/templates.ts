@@ -218,6 +218,19 @@ export function renderEmail(
       return { subject: `Booking cancelled: ${when}${ref}`, text, html };
     }
     case 'TRIP_CANCELLATION': {
+      if (p.temporarilyDiscontinued) {
+        const { text, html } = layout(
+          'Vehicle temporarily discontinued',
+          `${greeting} this vehicle has been temporarily discontinued, so your ticket has been cancelled. The details are below.`,
+          sections(),
+          [
+            'This stop lasts until an administrator starts the vehicle again. Please book another departure if you still need to travel.',
+            ...guestNote,
+          ],
+          dashLink,
+        );
+        return { subject: `Vehicle temporarily discontinued: ${when}${ref}`, text, html };
+      }
       const { text, html } = layout(
         'Your trip has been cancelled',
         `${greeting} this departure has been cancelled by the transport office, so your booking on it is cancelled.`,

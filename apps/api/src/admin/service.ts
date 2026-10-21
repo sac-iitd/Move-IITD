@@ -1,6 +1,7 @@
 import type { PrismaClient, ServiceTemplate, User } from '@prisma/client';
 import {
   SCHEDULE_DEFAULTS,
+  VEHICLE_PAUSED_REASON,
   computeTripWindows,
   istDateOf,
   istToUtc,
@@ -22,7 +23,13 @@ import { generateTrips, templateRules, tripDataFromTemplate } from '../trips/gen
  */
 export async function cancelTrip(
   prisma: PrismaClient,
-  input: { tripId: string; actor: User; reason: string; now: Date },
+  input: {
+    tripId: string;
+    actor: User;
+    reason: string;
+    now: Date;
+    temporarilyDiscontinued?: boolean;
+  },
 ) {
   const { tripId, actor, reason, now } = input;
   return withTransientRetry(() =>
@@ -56,6 +63,7 @@ export async function cancelTrip(
         await notifyBooking(tx, 'TRIP_CANCELLATION', { ...b, status: 'CANCELLED' }, trip, b.user, {
           reason,
           status: 'CANCELLED',
+          ...(input.temporarilyDiscontinued && { temporarilyDiscontinued: true }),
         });
       }
       await audit(tx, {
@@ -171,7 +179,13 @@ export async function patchTemplate(
   const { templateId, actor, patch, now } = input;
   const before = await prisma.serviceTemplate.findUnique({ where: { id: templateId } });
   if (!before) throw new HttpError('NOT_FOUND', 'Service template not found.');
-  const { applyToUnbookedTrips, timeConfirmed, ...fields } = patch;
+  const { applyToUnbookedTrips, timeConfirmed, active, ...fields } = patch;
+  if (active !== undefined && active !== before.active) {
+    throw new HttpError(
+      'VALIDATION_ERROR',
+      'Use Stop or Continue on the vehicle to change whether it is running.',
+    );
+  }
 
   const candidate: ServiceTemplate = {
     ...before,
@@ -241,6 +255,78 @@ export async function patchTemplate(
     },
   });
   return { template: updated, refreshedTrips: refreshed };
+}
+
+/**
+ * Pauses or resumes one regular vehicle (one of the six weekday departures).
+ * Pausing cancels every future departure of that vehicle and emails each passenger
+ * that the vehicle is temporarily discontinued and their ticket is cancelled.
+ * Resuming schedules those future departures again. Cancelled tickets stay cancelled;
+ * passengers book again if they still need to travel.
+ */
+export async function setVehicleRunning(
+  prisma: PrismaClient,
+  input: { templateId: string; running: boolean; actor: User; now: Date; horizonDays: number },
+) {
+  const { templateId, running, actor, now, horizonDays } = input;
+  const template = await prisma.serviceTemplate.findUnique({ where: { id: templateId } });
+  if (!template) throw new HttpError('NOT_FOUND', 'Service template not found.');
+  if (template.active === running) {
+    throw new HttpError(
+      'CONFLICT',
+      running ? 'This vehicle is already running.' : 'This vehicle is already stopped.',
+    );
+  }
+  await prisma.serviceTemplate.update({ where: { id: templateId }, data: { active: running } });
+
+  let affectedBookings = 0;
+  let tripsChanged = 0;
+  if (!running) {
+    const trips = await prisma.trip.findMany({
+      where: { serviceTemplateId: templateId, status: 'SCHEDULED', departureAt: { gt: now } },
+      select: { id: true },
+    });
+    for (const t of trips) {
+      const r = await cancelTrip(prisma, {
+        tripId: t.id,
+        actor,
+        reason: VEHICLE_PAUSED_REASON,
+        now,
+        temporarilyDiscontinued: true,
+      });
+      affectedBookings += r.affected;
+      tripsChanged++;
+    }
+  } else {
+    const restored = await prisma.trip.updateMany({
+      where: {
+        serviceTemplateId: templateId,
+        status: 'CANCELLED',
+        cancellationReason: VEHICLE_PAUSED_REASON,
+        departureAt: { gt: now },
+      },
+      data: {
+        status: 'SCHEDULED',
+        cancelledAt: null,
+        cancellationReason: null,
+        cancelledById: null,
+        bookedCount: 0,
+      },
+    });
+    tripsChanged = restored.count;
+    const generated = await generateTrips(prisma, { now, horizonDays });
+    tripsChanged += generated.created;
+  }
+
+  await audit(prisma, {
+    actorUserId: actor.id,
+    action: running ? 'VEHICLE_RESUMED' : 'VEHICLE_PAUSED',
+    targetType: 'ServiceTemplate',
+    targetId: templateId,
+    metadata: { code: template.code, affectedBookings, tripsChanged },
+  });
+  const updated = await prisma.serviceTemplate.findUniqueOrThrow({ where: { id: templateId } });
+  return { template: updated, affectedBookings, tripsChanged };
 }
 
 /**

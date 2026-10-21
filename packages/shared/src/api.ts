@@ -508,8 +508,16 @@ export interface AdminTripDto extends TripDto {
   cancelledAt: string | null;
 }
 
+export const setVehicleRunningSchema = z.object({
+  running: z.boolean(),
+});
+export type SetVehicleRunning = z.infer<typeof setVehicleRunningSchema>;
+
 export interface ServiceTemplateDto {
   id: string;
+  code: string;
+  /** 1–6 for the regular vehicles. Null for any other template. */
+  vehicleNumber: number | null;
   serviceLabel: string;
   capacity: number;
   origin: Campus;

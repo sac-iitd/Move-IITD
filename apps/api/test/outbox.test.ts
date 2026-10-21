@@ -246,6 +246,19 @@ describe('templates and sanitisation', () => {
     reason: 'Holiday',
   };
 
+  it('explains a temporary vehicle stop in the cancellation email', () => {
+    const e = renderEmail(
+      'TRIP_CANCELLATION',
+      { ...payload, temporarilyDiscontinued: true },
+      'https://bus.iitd.ac.in',
+    );
+    expect(e.subject).toContain('Vehicle temporarily discontinued');
+    expect(e.text).toContain('temporarily discontinued');
+    expect(e.text).toContain('ticket has been cancelled');
+    expect(e.text).toContain('SNP-AAAA-BBBB');
+    expect(e.text).toContain('1:30 PM IST');
+  });
+
   it('escapes HTML in user-provided values', () => {
     const e = renderEmail('TRIP_CANCELLATION', payload, 'https://bus.iitd.ac.in');
     expect(e.html).not.toContain('<script>');

@@ -1,6 +1,8 @@
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { istToUtc } from '@iitd-bus/shared';
+import { renderEmail } from '../src/email/templates';
+import type { NotificationPayload } from '../src/email/outbox';
 import { csvCell } from '../src/routes/admin';
 import { generateTrips } from '../src/trips/generate';
 import { seedServiceTemplates } from '../src/trips/templates-seed';
@@ -59,6 +61,7 @@ describe('authorization', () => {
     ['post', '/api/v1/admin/trips/x/cancel'],
     ['get', '/api/v1/admin/templates'],
     ['patch', '/api/v1/admin/templates/x'],
+    ['post', '/api/v1/admin/templates/x/running'],
     ['get', '/api/v1/admin/bookings'],
     ['get', '/api/v1/admin/bookings/export.csv'],
     ['get', '/api/v1/admin/bookings/SNP-AAAA-BBBB'],
@@ -334,6 +337,82 @@ describe('templates', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('stops a numbered vehicle, cancels its tickets, then continues it', async () => {
+    const tpl = await db.serviceTemplate.findUniqueOrThrow({
+      where: { code: 'BUS1-0730-DEL-SNP' },
+    });
+    const listed = await admin.agent.get('/api/v1/admin/templates');
+    expect(
+      listed.body.templates.find((row: { code: string }) => row.code === tpl.code).vehicleNumber,
+    ).toBe(1);
+
+    const trip = await tripOn(MON, '07:45');
+    const { reference, s } = await bookAs('p1', trip.id);
+    const stopped = await post(admin, `/api/v1/admin/templates/${tpl.id}/running`, {
+      running: false,
+    });
+    expect(stopped.status).toBe(200);
+    expect(stopped.body).toMatchObject({
+      template: { active: false, vehicleNumber: 1, code: tpl.code },
+      affectedBookings: 1,
+    });
+    expect(stopped.body.tripsChanged).toBeGreaterThan(0);
+
+    const cancelled = await db.trip.findUniqueOrThrow({ where: { id: trip.id } });
+    expect(cancelled).toMatchObject({
+      status: 'CANCELLED',
+      cancellationReason: 'This vehicle has been temporarily discontinued.',
+      bookedCount: 0,
+    });
+    expect(
+      (await db.booking.findFirstOrThrow({ where: { bookingReference: reference } })).status,
+    ).toBe('CANCELLED');
+
+    const note = await db.notificationOutbox.findFirstOrThrow({
+      where: { type: 'TRIP_CANCELLATION', tripId: trip.id },
+    });
+    const payload = JSON.parse(note.payload) as NotificationPayload;
+    expect(payload.temporarilyDiscontinued).toBe(true);
+    const email = renderEmail('TRIP_CANCELLATION', payload, 'https://sac.iitd.ac.in/MoveIITD');
+    expect(email.subject).toContain('Vehicle temporarily discontinued');
+    expect(email.text).toContain('temporarily discontinued');
+    expect(email.text).toContain('ticket has been cancelled');
+    expect(email.text).toContain(reference);
+
+    const visible = await s.agent.get(`/api/v1/trips?from=${MON}&to=${MON}`);
+    expect(visible.body.trips.some((row: { id: string }) => row.id === trip.id)).toBe(false);
+    const schedule = await request(t.app).get('/api/v1/schedule');
+    expect(
+      schedule.body.services.some(
+        (svc: { departureTime: string; origin: string }) =>
+          svc.departureTime === '07:45' && svc.origin === 'DELHI',
+      ),
+    ).toBe(false);
+
+    expect(
+      (await post(admin, `/api/v1/admin/templates/${tpl.id}/running`, { running: false })).status,
+    ).toBe(409);
+
+    const resumed = await post(admin, `/api/v1/admin/templates/${tpl.id}/running`, {
+      running: true,
+    });
+    expect(resumed.status).toBe(200);
+    expect(resumed.body.template.active).toBe(true);
+    expect(await db.trip.findUniqueOrThrow({ where: { id: trip.id } })).toMatchObject({
+      status: 'SCHEDULED',
+      bookedCount: 0,
+      cancellationReason: null,
+    });
+    expect(
+      (await db.booking.findFirstOrThrow({ where: { bookingReference: reference } })).status,
+    ).toBe('CANCELLED');
+
+    const again = await post(s, `/api/v1/trips/${trip.id}/bookings`, SELF_BOOKING);
+    expect(again.status).toBe(201);
+    expect(await db.auditLog.count({ where: { action: 'VEHICLE_PAUSED' } })).toBe(1);
+    expect(await db.auditLog.count({ where: { action: 'VEHICLE_RESUMED' } })).toBe(1);
+  });
 });
 
 describe('notifications and audit log', () => {
@@ -388,9 +467,9 @@ describe('notifications and audit log', () => {
       passengerType: 'SELF',
       status: 'CONFIRMED',
     });
-    expect(res.body.entries.some((e: { reference: string }) => e.reference === older.reference)).toBe(
-      false,
-    );
+    expect(
+      res.body.entries.some((e: { reference: string }) => e.reference === older.reference),
+    ).toBe(false);
     expect((await admin.agent.get('/api/v1/admin/users/missing/travel')).status).toBe(404);
   });
 });

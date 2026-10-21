@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  DIRECTION_LABELS,
   addDays,
   istDateOf,
   type AdminTemplatePatch,
@@ -64,7 +65,6 @@ function TemplateDialog({
   for (const k of [
     'capacity',
     'departureTime',
-    'active',
     'bookingOpenDaysBefore',
     'bookingOpenTime',
     'bookingCloseTime',
@@ -192,15 +192,6 @@ function TemplateDialog({
             </option>
           </select>
         </div>
-        <label className="col-span-2 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            checked={form.active}
-            onChange={(e) => set('active', e.target.checked)}
-          />
-          Active (generate new trips for this departure)
-        </label>
         <label className="col-span-2 flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -323,6 +314,7 @@ export function TripsPage() {
   const [editingTrip, setEditingTrip] = useState<AdminTripDto | null>(null);
   const [cancelling, setCancelling] = useState<AdminTripDto | null>(null);
   const [confirming, setConfirming] = useState<ServiceTemplateDto | null>(null);
+  const [pausing, setPausing] = useState<ServiceTemplateDto | null>(null);
 
   const templates = useQuery({
     queryKey: ['admin', 'templates'],
@@ -362,6 +354,24 @@ export function TripsPage() {
       invalidate();
     },
   });
+  const setRunning = useMutation({
+    mutationFn: ({ id, running }: { id: string; running: boolean }) =>
+      api<{ affectedBookings: number }>(`/admin/templates/${id}/running`, {
+        method: 'POST',
+        body: { running },
+      }),
+    onSuccess: (r, vars) => {
+      toast(
+        vars.running
+          ? 'Vehicle continued. Upcoming departures can be booked again. Tickets already cancelled stay cancelled.'
+          : `Vehicle stopped. ${r.affectedBookings} passenger(s) will be emailed that their ticket is cancelled.`,
+        'success',
+      );
+      setPausing(null);
+      invalidate();
+    },
+    onError: (e) => toast(errorMessage(e), 'error'),
+  });
   const generate = useMutation({
     mutationFn: () =>
       api<{ created: number }>('/admin/trips/generate', { method: 'POST', body: {} }),
@@ -372,8 +382,56 @@ export function TripsPage() {
     onError: (e) => toast(errorMessage(e), 'error'),
   });
 
+  const vehicles = [...(templates.data?.templates ?? [])]
+    .filter((t) => t.vehicleNumber != null)
+    .sort((a, b) => a.vehicleNumber! - b.vehicleNumber!);
+
   return (
     <div className="space-y-8">
+      <section aria-labelledby="vehicles-h">
+        <h2 id="vehicles-h" className="mb-1 text-lg font-bold">
+          Regular vehicles
+        </h2>
+        <p className="mb-3 text-sm text-ink-800">
+          Stop one vehicle for the time being. Future departures are cancelled and anyone who booked
+          is emailed. Continue it when it should run again.
+        </p>
+        {templates.isPending ? (
+          <LoadingSkeleton rows={2} label="Loading vehicles" />
+        ) : templates.isError ? (
+          <ErrorState error={templates.error} onRetry={() => void templates.refetch()} />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {vehicles.map((v) => (
+              <div key={v.id} className="card flex items-center gap-3 p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-900 text-sm font-bold text-brand-200">
+                  {v.vehicleNumber}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">
+                    {formatWallTime(v.departureTime)} · {v.serviceLabel} · {v.capacity} seats
+                  </p>
+                  <p className="text-sm text-ink-800">{DIRECTION_LABELS[v.direction]}</p>
+                  <p
+                    className={`text-xs font-semibold ${v.active ? 'text-emerald-800' : 'text-red-800'}`}
+                  >
+                    {v.active ? 'Running' : 'Stopped'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={
+                    v.active ? 'btn-danger min-h-9 px-3 py-1' : 'btn-primary min-h-9 px-3 py-1'
+                  }
+                  onClick={() => setPausing(v)}
+                >
+                  {v.active ? 'Stop for now' : 'Continue'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       <section aria-labelledby="tpl-h">
         <h2 id="tpl-h" className="mb-1 text-lg font-bold">
           Recurring weekday timetable
@@ -423,7 +481,7 @@ export function TripsPage() {
                       : 'previous day'}
                     ; cancel by {t.cancellationCloseTime}
                   </Td>
-                  <Td>{t.active ? 'Active' : 'Inactive'}</Td>
+                  <Td>{t.active ? 'Running' : 'Stopped'}</Td>
                   <Td>
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -615,6 +673,49 @@ export function TripsPage() {
         {confirmTime.error && (
           <div className="mt-3">
             <Alert tone="error">{errorMessage(confirmTime.error)}</Alert>
+          </div>
+        )}
+      </Dialog>
+      <Dialog
+        open={pausing !== null}
+        title={
+          pausing
+            ? `${pausing.active ? 'Stop' : 'Continue'} vehicle ${pausing.vehicleNumber}`
+            : 'Vehicle'
+        }
+        onClose={() => setPausing(null)}
+        busy={setRunning.isPending}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setPausing(null)}>
+              Back
+            </button>
+            <button
+              type="button"
+              className={pausing?.active ? 'btn-danger' : 'btn-primary'}
+              disabled={setRunning.isPending || !pausing}
+              onClick={() =>
+                pausing && setRunning.mutate({ id: pausing.id, running: !pausing.active })
+              }
+            >
+              {pausing?.active ? 'Stop this vehicle' : 'Continue this vehicle'}
+            </button>
+          </>
+        }
+      >
+        {pausing && (
+          <p>
+            Vehicle {pausing.vehicleNumber}: {formatWallTime(pausing.departureTime)}{' '}
+            {DIRECTION_LABELS[pausing.direction]} ({pausing.serviceLabel}, {pausing.capacity}{' '}
+            seats).{' '}
+            {pausing.active
+              ? 'Future departures will be cancelled. Anyone who has booked will get an email that the vehicle is temporarily discontinued and their ticket is cancelled.'
+              : 'Upcoming departures will be bookable again. Tickets that were cancelled stay cancelled, so those passengers need to book again.'}
+          </p>
+        )}
+        {setRunning.error && (
+          <div className="mt-3">
+            <Alert tone="error">{errorMessage(setRunning.error)}</Alert>
           </div>
         )}
       </Dialog>

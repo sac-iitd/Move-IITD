@@ -14,6 +14,24 @@ export const CAMPUS_LABELS: Record<Campus, string> = {
 export const DIRECTIONS = ['DELHI_TO_SONIPAT', 'SONIPAT_TO_DELHI'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
+/** Stable numbers for the six regular vehicles, in timetable order. */
+export const REGULAR_VEHICLE_CODES = [
+  'BUS1-0730-DEL-SNP',
+  'BUS1-1730-SNP-DEL',
+  'BUS2-0730-SNP-DEL',
+  'BUS2-1000-DEL-SNP',
+  'BUS2-1330-SNP-DEL',
+  'BUS2-1700-DEL-SNP',
+] as const;
+
+export function vehicleNumberOf(code: string): number | null {
+  const index = REGULAR_VEHICLE_CODES.indexOf(code as (typeof REGULAR_VEHICLE_CODES)[number]);
+  return index === -1 ? null : index + 1;
+}
+
+/** Stored on trips cancelled because an admin paused that regular vehicle. */
+export const VEHICLE_PAUSED_REASON = 'This vehicle has been temporarily discontinued.';
+
 export const DIRECTION_LABELS: Record<Direction, string> = {
   DELHI_TO_SONIPAT: 'Hauz Khas campus → Sonipat campus',
   SONIPAT_TO_DELHI: 'Sonipat campus → Hauz Khas campus',

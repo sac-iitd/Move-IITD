@@ -5,6 +5,7 @@ import {
   createBookingSchema,
   createBookingsSchema,
   istDateOf,
+  VEHICLE_PAUSED_REASON,
   idempotencyKeySchema,
   routeOf,
   tripsQuerySchema,
@@ -78,6 +79,7 @@ export function tripsRouter(ctx: AppContext) {
         travelDate: { gte: from, lte: to },
         departureAt: { gt: now },
         status: { in: ['SCHEDULED', 'CANCELLED'] },
+        NOT: { status: 'CANCELLED', cancellationReason: VEHICLE_PAUSED_REASON },
         ...(q.direction ? routeOf(q.direction) : {}),
       },
       orderBy: [{ departureAt: 'asc' }, { serviceLabel: 'asc' }],
@@ -124,10 +126,7 @@ export function tripsRouter(ctx: AppContext) {
         now,
       });
       if (result.created) {
-        req.log.info(
-          { bookingIds: result.bookings.map((b) => b.id), tripId },
-          'Bookings created',
-        );
+        req.log.info({ bookingIds: result.bookings.map((b) => b.id), tripId }, 'Bookings created');
       }
       const response: CreateBookingsResponse = {
         bookings: result.bookings.map((b, i) =>

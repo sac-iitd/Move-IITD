@@ -48,12 +48,15 @@ import {
   type NotificationStatus,
   type NotificationType,
   type Paginated,
+  setVehicleRunningSchema,
+  vehicleNumberOf,
   type ServiceTemplateDto,
 } from '@iitd-bus/shared';
 import type { AppContext } from '../context';
 import { requireAdmin, requireAuth } from '../auth/middleware';
 import {
   cancelTrip,
+  setVehicleRunning,
   createClosure,
   createSpecialTrip,
   patchTemplate,
@@ -93,6 +96,8 @@ function toAdminTripDto(
 function toTemplateDto(t: Prisma.ServiceTemplateGetPayload<object>): ServiceTemplateDto {
   return {
     id: t.id,
+    code: t.code,
+    vehicleNumber: vehicleNumberOf(t.code),
     serviceLabel: t.serviceLabel,
     capacity: t.capacity,
     origin: t.origin as Campus,
@@ -500,6 +505,23 @@ export function adminRouter(ctx: AppContext) {
       orderBy: [{ serviceLabel: 'asc' }, { departureTime: 'asc' }],
     });
     res.json({ templates: templates.map(toTemplateDto) });
+  });
+
+  r.post('/templates/:templateId/running', async (req, res) => {
+    const templateId = idParam.parse(req.params.templateId);
+    const { running } = setVehicleRunningSchema.parse(req.body);
+    const result = await setVehicleRunning(ctx.prisma, {
+      templateId,
+      running,
+      actor: req.auth!.user,
+      now: ctx.now(),
+      horizonDays: ctx.env.TRIP_GENERATION_HORIZON_DAYS,
+    });
+    res.json({
+      template: toTemplateDto(result.template),
+      affectedBookings: result.affectedBookings,
+      tripsChanged: result.tripsChanged,
+    });
   });
 
   r.patch('/templates/:templateId', async (req, res) => {
