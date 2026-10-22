@@ -1,5 +1,5 @@
 import type { Booking, Prisma, Trip, User } from '@prisma/client';
-import type { NotificationType } from '@iitd-bus/shared';
+import { boardingCodeOf, type NotificationType } from '@iitd-bus/shared';
 import { enqueueNotification, type NotificationPayload } from '../email/outbox';
 import { toPassengerDto } from './dto';
 
@@ -49,6 +49,8 @@ export async function notifyBooking(
       bookedBy: owner.name,
     },
     cancellationDeadline: trip.cancellationClosesAt.toISOString(),
+    ...((type === 'BOOKING_CONFIRMATION' || type === 'WAITLIST_PROMOTED') &&
+      booking.boardingToken && { boardingCode: boardingCodeOf(booking.boardingToken) }),
     ...extra,
   };
   const key = `${type}:${booking.id}${dedupeSuffix}`;

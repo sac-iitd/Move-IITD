@@ -36,7 +36,8 @@ describe('dashboard booking flow', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm booking' }));
 
     expect(await screen.findByRole('dialog', { name: 'Booking confirmed' })).toBeInTheDocument();
-    expect(screen.getByText('SNP-7K3M-Q9XD')).toBeInTheDocument();
+    expect(screen.getAllByText('SNP-7K3M-Q9XD').length).toBeGreaterThan(0);
+    expect(await screen.findByRole('img', { name: /Boarding QR code/ })).toBeInTheDocument();
     expect(screen.getByText(/confirmation email is on its way/)).toBeInTheDocument();
 
     const post = calls.find((c) => c.key === 'POST /trips/trip1/bookings')!;

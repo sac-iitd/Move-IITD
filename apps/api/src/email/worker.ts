@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { NotificationType } from '@iitd-bus/shared';
 import type { Logger } from '../lib/logger';
+import QRCode from 'qrcode';
 import type { Mailer } from './mailer';
 import type { NotificationPayload } from './outbox';
 import { renderEmail } from './templates';
@@ -82,10 +83,23 @@ export async function processOutbox(deps: OutboxDeps, batchSize = 20): Promise<O
     try {
       const payload = JSON.parse(row.payload) as NotificationPayload;
       const email = renderEmail(row.type as NotificationType, payload, deps.webOrigin);
+      const qr = email.boardingCode
+        ? await QRCode.toBuffer(email.boardingCode, {
+            type: 'png',
+            width: 360,
+            margin: 1,
+            errorCorrectionLevel: 'M',
+          })
+        : null;
       await deps.mailer.send({
         to: row.recipient,
-        ...email,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
         messageId: `<${row.dedupeKey.replace(/[^A-Za-z0-9.-]/g, '.')}@iitd-bus.local>`,
+        ...(qr && {
+          attachments: [{ filename: 'boarding-pass.png', content: qr, cid: 'boarding-qr' }],
+        }),
       });
       await deps.prisma.notificationOutbox.update({
         where: { id: row.id },

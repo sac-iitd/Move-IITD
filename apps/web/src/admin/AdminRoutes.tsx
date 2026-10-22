@@ -7,12 +7,17 @@ import { AuditLogPage } from './AuditLogPage';
 import { AnalyticsPage } from './AnalyticsPage';
 import { ManifestPage } from './ManifestPage';
 import { UsersPage } from './UsersPage';
+import { BoardingLivePage } from './BoardingLivePage';
+import { ConductorsPage } from './ConductorsPage';
+import { ConductorHistoryPage } from './ConductorHistoryPage';
 import { useLocation } from 'react-router-dom';
 
 const tabs = [
   { to: '/admin', label: 'Overview', end: true },
   { to: '/admin/trips', label: 'Trips & schedule' },
+  { to: '/admin/boarding', label: 'Boarding' },
   { to: '/admin/bookings', label: 'Bookings' },
+  { to: '/admin/conductors', label: 'Conductors' },
   { to: '/admin/analytics', label: 'Analytics' },
   { to: '/admin/users', label: 'Users & blocks' },
   { to: '/admin/notifications', label: 'Email' },
@@ -51,7 +56,10 @@ export function AdminRoutes() {
         <Routes>
           <Route index element={<OverviewPage />} />
           <Route path="trips" element={<TripsPage />} />
+          <Route path="boarding" element={<BoardingLivePage />} />
           <Route path="bookings" element={<BookingsPage />} />
+          <Route path="conductors" element={<ConductorsPage />} />
+          <Route path="conductors/:grantId" element={<ConductorHistoryPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="audit-logs" element={<AuditLogPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />

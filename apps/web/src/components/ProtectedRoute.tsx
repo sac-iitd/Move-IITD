@@ -11,9 +11,12 @@ import { LoadingScreen } from './Feedback';
 export function ProtectedRoute({
   children,
   admin = false,
+  staff = false,
 }: {
   children: ReactNode;
   admin?: boolean;
+  /** Conductor scanner. Administrators are allowed too. */
+  staff?: boolean;
 }) {
   const { user, loading, sessionExpired } = useAuth();
   const location = useLocation();
@@ -28,6 +31,13 @@ export function ProtectedRoute({
     return (
       <Alert tone="error" title="Administrator access required">
         Your account does not have access to the admin portal.
+      </Alert>
+    );
+  }
+  if (staff && user.role !== 'ADMIN' && user.role !== 'CONDUCTOR') {
+    return (
+      <Alert tone="error" title="Scanner access required">
+        Only a conductor or an administrator can scan boarding passes.
       </Alert>
     );
   }

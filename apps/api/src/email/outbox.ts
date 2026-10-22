@@ -41,6 +41,8 @@ export interface NotificationPayload {
   blockedUntil?: string;
   /** true for the copy sent to a guest passenger. */
   guestCopy?: boolean;
+  /** Full QR text for a confirmed ticket. Absent on waiting-list mail. */
+  boardingCode?: string;
 }
 
 export interface EnqueueInput {

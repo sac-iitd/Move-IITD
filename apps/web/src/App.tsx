@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { BookingDetailsPage } from './pages/BookingDetailsPage';
+import { ConductPage } from './conduct/ConductPage';
 
 // The admin portal (incl. charts) is split into its own chunk; regular users never download it.
 const AdminRoutes = lazy(() =>
@@ -55,6 +56,14 @@ export function App() {
                 element={
                   <ProtectedRoute>
                     <BookingDetailsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/conduct"
+                element={
+                  <ProtectedRoute staff>
+                    <ConductPage />
                   </ProtectedRoute>
                 }
               />

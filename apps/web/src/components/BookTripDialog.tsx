@@ -18,6 +18,7 @@ import {
 import { ApiError, api, newIdempotencyKey } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { Dialog } from './Dialog';
+import { BoardingPass } from './BoardingPass';
 import { BookingStatusBadge } from './Badges';
 import { Alert } from './ui';
 import { useToast } from './Toast';
@@ -67,8 +68,7 @@ function blankGuest(): GuestDraft {
 }
 
 function toRequest(f: FormState, joinWaitlist: boolean) {
-  const detail = (purpose: Purpose | '', text: string) =>
-    purpose === 'OTHER' ? text : undefined;
+  const detail = (purpose: Purpose | '', text: string) => (purpose === 'OTHER' ? text : undefined);
   return {
     bookerName: f.bookerName,
     phone: f.phone,
@@ -318,12 +318,13 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
         }
       >
         {done.length === 1 ? (
-          <BookingSummary booking={done[0]!} />
+          <div className="space-y-4">
+            <BoardingPass booking={done[0]!} />
+            <BookingSummary booking={done[0]!} />
+          </div>
         ) : (
           <div className="space-y-3">
-            <p>
-              Each guest gets their own email. A copy of each booking was sent to you as well.
-            </p>
+            <p>Each guest gets their own email. A copy of each booking was sent to you as well.</p>
             {done.map((b) => (
               <div key={b.reference} className="rounded-lg border border-ink-900/15 p-3">
                 <p className="font-mono text-lg font-bold tracking-wider">{b.reference}</p>
@@ -333,6 +334,9 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
                 </p>
                 <div className="mt-1">
                   <BookingStatusBadge status={b.status} position={b.waitlistPosition} />
+                </div>
+                <div className="mt-3">
+                  <BoardingPass booking={b} />
                 </div>
               </div>
             ))}
@@ -352,7 +356,11 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
   const setTravelling = (yes: boolean) => {
     if (yes && hasSelf) return;
     setForm((f) => {
-      const guests = yes ? f.guests.slice(0, Math.max(0, room - 1)) : f.guests.length ? f.guests : [blankGuest()];
+      const guests = yes
+        ? f.guests.slice(0, Math.max(0, room - 1))
+        : f.guests.length
+          ? f.guests
+          : [blankGuest()];
       return { ...f, travelling: yes, guests: guests.slice(0, yes ? 1 : 2) };
     });
     setErrors({});
@@ -541,7 +549,11 @@ export function BookTripDialog({ trip, onClose }: { trip: TripDto | null; onClos
               <legend className="px-1 text-sm font-semibold">
                 {form.guests.length > 1 ? `Visitor ${i + 1}` : 'Visitor'}
               </legend>
-              <Field id={`${gid}-idtype`} label="Government photo ID" error={err(`passengers.${n}.guest.idType`)}>
+              <Field
+                id={`${gid}-idtype`}
+                label="Government photo ID"
+                error={err(`passengers.${n}.guest.idType`)}
+              >
                 <select
                   id={`${gid}-idtype`}
                   className="input"

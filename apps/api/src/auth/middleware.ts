@@ -34,6 +34,15 @@ export const requireAdmin: RequestHandler = (req, _res, next) => {
   next();
 };
 
+/** Conductors scan passes. Administrators can do the same when they are on a vehicle. */
+export const requireStaff: RequestHandler = (req, _res, next) => {
+  if (!req.auth) throw new HttpError('UNAUTHENTICATED', 'Please sign in to continue.');
+  if (req.auth.user.role !== 'ADMIN' && req.auth.user.role !== 'CONDUCTOR') {
+    throw new HttpError('FORBIDDEN', 'Conductor or administrator access is required.');
+  }
+  next();
+};
+
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /**

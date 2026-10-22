@@ -16,6 +16,7 @@ import { HttpError } from '../lib/errors';
 import { encryptIdNumber } from '../lib/id-cipher';
 import { TX_OPTIONS, isUniqueViolation, withTransientRetry } from '../lib/prisma-errors';
 import { activeBlockOn } from '../blocks/query';
+import { newBoardingToken } from '../boarding/token';
 import { generateBookingReference } from './reference';
 import { notifyBooking } from './notify';
 import { waitlistPositions, type BookingWithRelations } from './dto';
@@ -479,7 +480,9 @@ async function createWithUniqueReference(
       select: { id: true },
     });
     if (clash && attempt < 5) continue;
-    return tx.booking.create({ data: { ...data, bookingReference } });
+    return tx.booking.create({
+      data: { ...data, bookingReference, boardingToken: newBoardingToken() },
+    });
   }
 }
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { BookingDto, MyBookingsResponse } from '@iitd-bus/shared';
 import { api } from '../api/client';
+import { BoardingPass } from '../components/BoardingPass';
 import { BookingStatusBadge, DirectionBadge, NotificationStatusBadge } from '../components/Badges';
 import { CancelBookingDialog } from '../components/CancelBookingDialog';
 import { EmptyState, ErrorState, LoadingSkeleton, PageHeader } from '../components/ui';
@@ -36,6 +37,11 @@ function BookingRow({ b, onCancel }: { b: BookingDto; onCancel: (b: BookingDto) 
           Passenger: <strong>{b.passenger.name}</strong>
           {b.passenger.type === 'GUEST' && ' (guest)'}
         </p>
+        {b.status === 'CONFIRMED' && b.trip.status !== 'CANCELLED' && (
+          <div className="pt-2">
+            <BoardingPass booking={b} />
+          </div>
+        )}
         {b.status === 'CANCELLED' && b.cancellationReason && (
           <p className="text-xs text-ink-800">Reason: {b.cancellationReason}</p>
         )}

@@ -199,7 +199,9 @@ export function UsersPage() {
                       {u.email ?? '-'}
                       <span className="block text-ink-800">{u.subject}</span>
                     </Td>
-                    <Td>{u.role === 'ADMIN' ? 'Admin' : 'User'}</Td>
+                    <Td>
+                      {u.role === 'ADMIN' ? 'Admin' : u.role === 'CONDUCTOR' ? 'Conductor' : 'User'}
+                    </Td>
                     <Td className="text-xs">{u.lastLoginAt ? formatIst(u.lastLoginAt) : '-'}</Td>
                     <Td className="text-xs">
                       {u.activeBlock ? (

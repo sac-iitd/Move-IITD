@@ -15,6 +15,8 @@ export function testPrisma(): PrismaClient {
 export async function resetDb(db = testPrisma()): Promise<void> {
   await db.notificationOutbox.deleteMany();
   await db.auditLog.deleteMany();
+  await db.boardingScan.deleteMany();
+  await db.conductorGrant.deleteMany();
   await db.booking.deleteMany();
   await db.session.deleteMany();
   await db.trip.deleteMany();

@@ -2,6 +2,7 @@ import type { Booking, NotificationOutbox, Prisma, PrismaClient, Trip, User } fr
 import {
   bookingAvailability,
   directionOf,
+  boardingCodeOf,
   maskIdNumber,
   type BookingDto,
   type BookingStatus,
@@ -130,6 +131,9 @@ export function toBookingDto(
     emailStatus: confirmationEmailStatus(b.notifications),
     waitlistPosition: status === 'WAITLISTED' ? waitlistPosition : null,
     passenger: toPassengerDto(b, b.user?.providerSubject),
+    boardingCode:
+      status === 'CONFIRMED' && b.boardingToken ? boardingCodeOf(b.boardingToken) : null,
+    boardedAt: b.boardedAt?.toISOString() ?? null,
   };
 }
 

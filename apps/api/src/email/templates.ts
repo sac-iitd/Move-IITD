@@ -16,6 +16,8 @@ export interface RenderedEmail {
   subject: string;
   text: string;
   html: string;
+  /** When set, the worker attaches a PNG of this code as cid:boarding-qr. */
+  boardingCode?: string;
 }
 
 type Rows = [string, string][];
@@ -74,12 +76,17 @@ function layout(
   sections: Section[],
   notes: string[],
   link: { href: string; label: string },
+  boardingCode?: string,
 ) {
+  const passLine = boardingCode
+    ? 'A QR boarding pass is attached to this email. Show that code when you board.'
+    : '';
   const text = [
     intro,
     ...sections.map(
       (s) => `${s.title.toUpperCase()}\n${s.rows.map(([k, v]) => `  ${k}: ${v}`).join('\n')}`,
     ),
+    ...(passLine ? [passLine] : []),
     ...notes.map((n) => `- ${n}`),
     `${link.label}: ${link.href}`,
     'MoveIITD, Student Affairs Council, IIT Delhi\nThis is an automated message. Please do not reply with passwords or personal documents.',
@@ -98,6 +105,9 @@ function layout(
         .join('')}</table>`,
     )
     .join('');
+  const passHtml = boardingCode
+    ? `<p style="margin:20px 0 0;text-align:center"><img src="cid:boarding-qr" width="220" height="220" alt="Boarding QR code" style="display:inline-block;border:1px solid #e7cc97;border-radius:8px"/></p>`
+    : '';
   const notesHtml = notes.length
     ? `<ul style="margin:20px 0 0;padding-left:20px;color:#2a1714;font-size:14px">${notes.map((n) => `<li style="margin:6px 0">${esc(n)}</li>`).join('')}</ul>`
     : '';
@@ -109,6 +119,7 @@ function layout(
 <h1 style="margin:0 0 12px;font-size:20px;color:#2a1714">${esc(title)}</h1>
 <p style="margin:0;color:#2a1714">${esc(intro)}</p>
 ${sectionHtml}
+${passHtml}
 ${notesHtml}
 <p style="margin:24px 0 0"><a href="${esc(link.href)}" style="display:inline-block;background:#2a1714;color:#f3e6cc;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">${esc(link.label)}</a></p>
 </td></tr>
@@ -141,6 +152,11 @@ export function renderEmail(
       ]
     : [];
   const idNote = `Please bring your valid ID proof (${idTypeText((p.passenger?.idType ?? 'IITD_ID') as IdType, p.passenger?.idTypeDetail)}). It will be checked when boarding.`;
+  const boardNote = p.boardingCode
+    ? p.guestCopy
+      ? 'Show the QR code in this email when you board. Please be at the boarding point 10 minutes before departure. Seat numbers are not assigned.'
+      : 'Show the QR code in this email, or on your booking page, when you board. Please be at the boarding point 10 minutes before departure. Seat numbers are not assigned.'
+    : 'Show this booking reference when you board. Please be at the boarding point 10 minutes before departure. Seat numbers are not assigned.';
   const cancelNote = p.cancellationDeadline
     ? `Plans changed? Cancel from "My bookings" before ${formatIst(p.cancellationDeadline)} IST so someone on the waiting list gets the seat.`
     : 'Plans changed? Cancel from "My bookings" before 2:00 PM IST on the day before travel (Friday for Monday trips).';
@@ -151,15 +167,16 @@ export function renderEmail(
         'Your seat is confirmed',
         `${greeting} your seat on the MoveIITD shuttle is confirmed.`,
         sections(),
-        [
-          idNote,
-          'Show this booking reference to the driver. Please be at the boarding point 10 minutes before departure. Seat numbers are not assigned.',
-          ...(p.guestCopy ? [] : [cancelNote]),
-          ...guestNote,
-        ],
+        [idNote, boardNote, ...(p.guestCopy ? [] : [cancelNote]), ...guestNote],
         bookingLink,
+        p.boardingCode,
       );
-      return { subject: `Booking confirmed: ${when}${ref}`, text, html };
+      return {
+        subject: `Booking confirmed: ${when}${ref}`,
+        text,
+        html,
+        ...(p.boardingCode && { boardingCode: p.boardingCode }),
+      };
     }
     case 'WAITLIST_JOINED': {
       const { text, html } = layout(
@@ -181,15 +198,16 @@ export function renderEmail(
         'Good news: you got a seat',
         `${greeting} a seat became available and your waiting-list booking is now CONFIRMED.`,
         sections(),
-        [
-          idNote,
-          'Show this booking reference to the driver. Please be at the boarding point 10 minutes before departure.',
-          ...(p.guestCopy ? [] : [cancelNote]),
-          ...guestNote,
-        ],
+        [idNote, boardNote, ...(p.guestCopy ? [] : [cancelNote]), ...guestNote],
         bookingLink,
+        p.boardingCode,
       );
-      return { subject: `Seat confirmed from waiting list: ${when}${ref}`, text, html };
+      return {
+        subject: `Seat confirmed from waiting list: ${when}${ref}`,
+        text,
+        html,
+        ...(p.boardingCode && { boardingCode: p.boardingCode }),
+      };
     }
     case 'WAITLIST_EXPIRED': {
       const { text, html } = layout(

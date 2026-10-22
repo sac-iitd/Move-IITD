@@ -36,12 +36,17 @@ model User {
   sessions       Session[]
   bookings       Booking[]  @relation("BookingUser")
   cancellations  Booking[]  @relation("BookingCancelledBy")
+  boarded        Booking[]  @relation("BookingBoardedBy")
   auditLogs      AuditLog[]
   cancelledTrips Trip[]
   closures       ServiceClosure[]
   blocks         UserBlock[]      @relation("BlockedUser")
   blocksCreated  UserBlock[]      @relation("BlockCreatedBy")
   blocksRevoked  UserBlock[]      @relation("BlockRevokedBy")
+  boardingScans  BoardingScan[]
+  conductorGrant ConductorGrant?  @relation("ConductorAccount")
+  grantsGiven    ConductorGrant[] @relation("ConductorGrantedBy")
+  grantsRevoked  ConductorGrant[] @relation("ConductorRevokedBy")
 
   @@unique([authProvider, providerSubject])
   @@index([email])
@@ -121,6 +126,7 @@ model Trip {
   cancelledBy   User?                @relation(fields: [cancelledById], references: [id], onDelete: SetNull)
   bookings      Booking[]
   notifications NotificationOutbox[]
+  boardingScans BoardingScan[]
 
   @@unique([serviceTemplateId, travelDate])
   @@index([travelDate])
@@ -165,13 +171,19 @@ model Booking {
   cancelledAt        DateTime?
   cancellationReason String? @db.VarChar(500)
   cancelledById      String?
+  /// Opaque secret encoded in the passenger's boarding QR. Null on rows created before passes existed.
+  boardingToken      String?   @unique
+  boardedAt          DateTime?
+  boardedById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   user          User                 @relation("BookingUser", fields: [userId], references: [id], onDelete: Restrict)
   trip          Trip                 @relation(fields: [tripId], references: [id], onDelete: Restrict)
   cancelledBy   User?                @relation("BookingCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  boardedBy     User?                @relation("BookingBoardedBy", fields: [boardedById], references: [id], onDelete: SetNull)
   notifications NotificationOutbox[]
+  boardingScans BoardingScan[]
 
   @@unique([userId, tripId, activeSlot])
   @@unique([userId, tripId, selfSlot])
@@ -256,4 +268,43 @@ model UserBlock {
   revokedBy User? @relation("BlockRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
 
   @@index([userId, endsOn])
+}
+
+/// Admin-managed right to scan boarding passes. Applied on the next sign-in if the person
+/// has not signed in yet. Kerberos id is the OAuth user_id, stored lower-case.
+model ConductorGrant {
+  id          String    @id @default(cuid())
+  kerberosId  String    @unique
+  userId      String?   @unique
+  active      Boolean   @default(true)
+  grantedById String?
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  revokedById String?
+
+  user      User? @relation("ConductorAccount", fields: [userId], references: [id], onDelete: SetNull)
+  grantedBy User? @relation("ConductorGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  revokedBy User? @relation("ConductorRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  @@index([active])
+}
+
+/// One attempt to scan a boarding QR, including rejected scans, so conductor history is complete.
+model BoardingScan {
+  id          String   @id @default(cuid())
+  bookingId   String?
+  /// The departure the conductor had selected, which may differ from the ticket's trip.
+  tripId      String
+  scannedById String
+  /// BOARDED, ALREADY_BOARDED, WRONG_TRIP, CANCELLED, NOT_CONFIRMED, TRIP_CANCELLED, INVALID.
+  result      String
+  createdAt   DateTime @default(now())
+
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Restrict)
+  scannedBy User     @relation(fields: [scannedById], references: [id], onDelete: Restrict)
+
+  @@index([scannedById, createdAt])
+  @@index([tripId, createdAt])
+  @@index([bookingId])
 }

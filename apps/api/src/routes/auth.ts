@@ -138,7 +138,7 @@ export function authRouter(ctx: AppContext) {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role as 'USER' | 'ADMIN',
+        role: user.role as MeResponse['user']['role'],
         category: user.category,
       },
       csrfToken: session.csrfToken,

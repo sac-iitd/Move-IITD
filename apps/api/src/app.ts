@@ -15,6 +15,7 @@ import { bookingsRouter } from './routes/bookings';
 import { tripsRouter } from './routes/trips';
 import { scheduleRouter } from './routes/schedule';
 import { adminRouter } from './routes/admin';
+import { boardingRouter } from './routes/boarding';
 
 export function createApp(ctx: AppContext) {
   configureIdCipher(ctx.env);
@@ -93,6 +94,7 @@ export function createApp(ctx: AppContext) {
   v1.use('/schedule', scheduleRouter(ctx));
   v1.use('/trips', tripsRouter(ctx));
   v1.use('/bookings', bookingsRouter(ctx));
+  v1.use('/boarding', boardingRouter(ctx));
   v1.use('/admin', adminRouter(ctx));
   app.use('/api/v1', v1);
 

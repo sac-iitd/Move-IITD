@@ -35,6 +35,7 @@ export function Header() {
     goToSignedOutPage();
   };
   const isAdmin = user?.role === 'ADMIN';
+  const canScan = isAdmin || user?.role === 'CONDUCTOR';
 
   const nav = user && (
     <>
@@ -42,6 +43,7 @@ export function Header() {
       <NavItem to="/bookings" end>
         My bookings
       </NavItem>
+      {canScan && <NavItem to="/conduct">Scan tickets</NavItem>}
       {isAdmin && <NavItem to="/admin">Admin</NavItem>}
     </>
   );

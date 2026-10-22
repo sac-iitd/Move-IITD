@@ -49,8 +49,40 @@ export function routeOf(direction: Direction): { origin: Campus; destination: Ca
     : { origin: 'SONIPAT', destination: 'DELHI' };
 }
 
-export const USER_ROLES = ['USER', 'ADMIN'] as const;
+export const USER_ROLES = ['USER', 'ADMIN', 'CONDUCTOR'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
+
+/** Prefix on every boarding QR so a random code is rejected before a database lookup. */
+export const BOARDING_CODE_PREFIX = 'MIITD1.';
+
+export function boardingCodeOf(token: string): string {
+  return `${BOARDING_CODE_PREFIX}${token}`;
+}
+
+/** Pulls the secret out of a scanned QR, including a booking-page URL that carries `t`. */
+export function tokenFromBoardingScan(raw: string): string | null {
+  const text = raw.trim();
+  const prefixed = /^MIITD1\.([A-Za-z0-9_-]{20,80})$/.exec(text);
+  if (prefixed?.[1]) return prefixed[1];
+  try {
+    const param = new URL(text).searchParams.get('t');
+    if (param && /^[A-Za-z0-9_-]{20,80}$/.test(param)) return param;
+  } catch {
+    // The scanner usually reads the raw code, not a URL.
+  }
+  return null;
+}
+
+export const BOARDING_RESULTS = [
+  'BOARDED',
+  'ALREADY_BOARDED',
+  'WRONG_TRIP',
+  'CANCELLED',
+  'NOT_CONFIRMED',
+  'TRIP_CANCELLED',
+  'INVALID',
+] as const;
+export type BoardingResult = (typeof BOARDING_RESULTS)[number];
 
 export const TRIP_STATUSES = ['SCHEDULED', 'CANCELLED', 'COMPLETED'] as const;
 export type TripStatus = (typeof TRIP_STATUSES)[number];

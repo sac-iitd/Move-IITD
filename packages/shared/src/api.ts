@@ -10,6 +10,7 @@ import {
   NOTIFICATION_STATUSES,
   NOTIFICATION_TYPES,
   TRIP_STATUSES,
+  type BoardingResult,
   type BookingStatus,
   type Campus,
   type CutoffRule,
@@ -448,6 +449,9 @@ export interface BookingDto {
   /** 1-based position while WAITLISTED. */
   waitlistPosition: number | null;
   passenger: PassengerDto;
+  /** Present for a confirmed ticket the caller is allowed to show. Encoded in the QR. */
+  boardingCode: string | null;
+  boardedAt: string | null;
 }
 
 export interface PassengerDto {
@@ -562,6 +566,7 @@ export interface AdminBookingDto {
   /** Full ID number (admins only). IITD_ID = Kerberos id. Null after retention clean-up. */
   idNumber: string | null;
   waitlistPosition: number | null;
+  boardedAt: string | null;
 }
 
 export interface ManifestResponse {
@@ -578,6 +583,8 @@ export interface ManifestResponse {
     idType: IdType;
     idTypeDetail?: string | null;
     idNumber: string | null;
+    boardedAt: string | null;
+    boardedByName: string | null;
   }>;
   waitlist: Array<{ position: number; reference: string; name: string; phone: string | null }>;
 }
@@ -713,4 +720,113 @@ export interface AuditLogDto {
   targetId: string | null;
   metadata: unknown;
   createdAt: string;
+}
+
+export const kerberosIdSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9._-]{2,64}$/, 'Enter a Kerberos id, for example cs1234567.');
+
+export const boardingScanSchema = z.object({
+  tripId: z.string().trim().min(1).max(64),
+  code: z.string().trim().min(1).max(500),
+});
+export type BoardingScanRequest = z.infer<typeof boardingScanSchema>;
+
+export const boardingDateQuerySchema = z.object({
+  date: dateStringSchema.optional(),
+});
+
+export const conductorGrantSchema = z.object({
+  kerberosId: kerberosIdSchema,
+});
+export type ConductorGrantRequest = z.infer<typeof conductorGrantSchema>;
+
+export interface BoardingScanResponse {
+  result: BoardingResult;
+  message: string;
+  passengerName: string | null;
+  boardedAt: string | null;
+  ticket: {
+    travelDate: string;
+    departureTime: string;
+    serviceLabel: string;
+    direction: Direction;
+    origin: Campus;
+    destination: Campus;
+  } | null;
+}
+
+export interface ConductorTripDto {
+  id: string;
+  serviceLabel: string;
+  travelDate: string;
+  departureTime: string;
+  departureAt: string;
+  origin: Campus;
+  destination: Campus;
+  direction: Direction;
+  capacity: number;
+  bookedCount: number;
+  boardedCount: number;
+  status: TripStatus;
+  isSpecial: boolean;
+  vehicleNumber: number | null;
+}
+
+export interface ConductorRosterDto {
+  trip: ConductorTripDto;
+  boarded: Array<{ name: string; boardedAt: string }>;
+}
+
+export interface LiveBoardingPassenger {
+  reference: string;
+  name: string;
+  status: BookingStatus;
+  boardedAt: string | null;
+  scannedByName: string | null;
+}
+
+export interface LiveBoardingTrip {
+  trip: ConductorTripDto;
+  passengers: LiveBoardingPassenger[];
+}
+
+export interface LiveBoardingResponse {
+  date: string;
+  trips: LiveBoardingTrip[];
+}
+
+export interface ConductorDto {
+  id: string;
+  kerberosId: string;
+  userId: string | null;
+  name: string | null;
+  email: string | null;
+  role: UserRole | null;
+  active: boolean;
+  grantedAt: string;
+  revokedAt: string | null;
+  grantedByName: string | null;
+  boardedCount: number;
+  scanCount: number;
+}
+
+export interface ConductorHistoryDto {
+  conductor: ConductorDto;
+  trips: Array<{
+    tripId: string;
+    travelDate: string;
+    departureTime: string;
+    serviceLabel: string;
+    direction: Direction;
+    boarded: number;
+    scans: Array<{
+      at: string;
+      result: BoardingResult;
+      passengerName: string | null;
+      reference: string | null;
+    }>;
+  }>;
 }

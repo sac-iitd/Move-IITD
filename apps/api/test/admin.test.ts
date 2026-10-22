@@ -69,6 +69,11 @@ describe('authorization', () => {
     ['get', '/api/v1/admin/notifications'],
     ['post', '/api/v1/admin/notifications/x/retry'],
     ['get', '/api/v1/admin/audit-logs'],
+    ['get', '/api/v1/admin/boarding'],
+    ['get', '/api/v1/admin/conductors'],
+    ['post', '/api/v1/admin/conductors'],
+    ['get', '/api/v1/admin/conductors/x'],
+    ['delete', '/api/v1/admin/conductors/x'],
   ];
 
   it('rejects unauthenticated requests on every admin endpoint', async () => {

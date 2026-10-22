@@ -4,6 +4,13 @@ import path from 'node:path';
 import { createTransport, type Transporter } from 'nodemailer';
 import type { Env } from '../config/env';
 
+export interface MailAttachment {
+  filename: string;
+  content: Buffer;
+  /** Content-ID for an inline image, referenced as cid:name in the HTML. */
+  cid: string;
+}
+
 export interface MailMessage {
   to: string;
   subject: string;
@@ -11,6 +18,7 @@ export interface MailMessage {
   html: string;
   /** Stable per logical notification; lets receiving MTAs de-duplicate. */
   messageId?: string;
+  attachments?: MailAttachment[];
 }
 
 export interface Mailer {
@@ -47,6 +55,12 @@ export class SmtpMailer implements Mailer {
       text: m.text,
       html: m.html,
       messageId: m.messageId,
+      attachments: m.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        cid: a.cid,
+        contentDisposition: 'inline' as const,
+      })),
     });
   }
 

@@ -49,6 +49,8 @@ export function bookingFixture(overrides: Partial<BookingDto> = {}): BookingDto 
     }),
     emailStatus: 'PENDING',
     waitlistPosition: null,
+    boardingCode: 'MIITD1.abcdefghijklmnopqrstuvwx',
+    boardedAt: null,
     passenger: {
       type: 'SELF',
       name: 'Asha Kumar',

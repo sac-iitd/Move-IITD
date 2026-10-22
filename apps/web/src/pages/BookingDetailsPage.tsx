@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { BookingDto } from '@iitd-bus/shared';
 import { ApiError, api } from '../api/client';
+import { BoardingPass } from '../components/BoardingPass';
 import { BookingSummary } from '../components/BookTripDialog';
 import { BookingStatusBadge, NotificationStatusBadge } from '../components/Badges';
 import { CancelBookingDialog } from '../components/CancelBookingDialog';
@@ -77,6 +78,7 @@ export function BookingDetailsPage() {
             confirmation.
           </Alert>
         )}
+        <BoardingPass booking={b} />
         <div className="card p-5">
           <BookingSummary booking={b} />
           <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border-t border-ink-900/10 pt-4 text-sm">

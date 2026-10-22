@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { DIRECTION_LABELS, idTypeText, type ManifestResponse } from '@iitd-bus/shared';
@@ -10,9 +11,15 @@ const logoSrc = `${import.meta.env.BASE_URL}sac-logo.png`;
 /** Passenger list for the driver - printable on A4 or downloadable as CSV. */
 export function ManifestPage() {
   const { tripId = '' } = useParams();
+  const opened = useRef(false);
   const q = useQuery({
     queryKey: ['admin', 'manifest', tripId],
-    queryFn: () => api<ManifestResponse>(`/admin/trips/${encodeURIComponent(tripId)}/manifest`),
+    refetchInterval: 5000,
+    queryFn: () => {
+      const live = opened.current ? '?live=1' : '';
+      opened.current = true;
+      return api<ManifestResponse>(`/admin/trips/${encodeURIComponent(tripId)}/manifest${live}`);
+    },
   });
 
   if (q.isPending) return <LoadingSkeleton rows={3} label="Loading passenger list" />;
@@ -72,6 +79,7 @@ export function ManifestPage() {
                     'Purpose',
                     'ID type',
                     'ID number',
+                    'Boarded',
                     'Signature / ✓',
                   ].map((h) => (
                     <th
@@ -106,6 +114,18 @@ export function ManifestPage() {
                     </td>
                     <td className="border border-ink-900/15 px-2 py-2 font-mono">
                       {p.idNumber ?? '-'}
+                    </td>
+                    <td className="border border-ink-900/15 px-2 py-2 text-xs">
+                      {p.boardedAt ? (
+                        <>
+                          {formatIst(p.boardedAt)}
+                          {p.boardedByName ? (
+                            <span className="block text-ink-800">{p.boardedByName}</span>
+                          ) : null}
+                        </>
+                      ) : (
+                        'Not yet'
+                      )}
                     </td>
                     <td className="w-28 border border-ink-900/15 px-2 py-2" />
                   </tr>

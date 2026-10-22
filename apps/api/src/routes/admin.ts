@@ -48,6 +48,8 @@ import {
   type NotificationStatus,
   type NotificationType,
   type Paginated,
+  boardingDateQuerySchema,
+  conductorGrantSchema,
   setVehicleRunningSchema,
   vehicleNumberOf,
   type ServiceTemplateDto,
@@ -63,6 +65,13 @@ import {
   patchTrip,
   removeClosure,
 } from '../admin/service';
+import { liveBoarding } from '../boarding/service';
+import {
+  conductorHistory,
+  grantConductor,
+  listConductors,
+  revokeConductor,
+} from '../conductors/service';
 import { cancelBooking } from '../bookings/service';
 import {
   confirmationEmailStatus,
@@ -179,6 +188,7 @@ function toAdminBookingDto(
     idTypeDetail: b.idTypeDetail,
     idNumber: fullIdNumber(b, b.user.providerSubject),
     waitlistPosition: b.status === 'WAITLISTED' ? waitlistPosition : null,
+    boardedAt: b.boardedAt?.toISOString() ?? null,
   };
 }
 
@@ -689,7 +699,7 @@ export function adminRouter(ctx: AppContext) {
     if (!trip) throw new HttpError('NOT_FOUND', 'Trip not found.');
     const rows = await ctx.prisma.booking.findMany({
       where: { tripId, status: { in: ['CONFIRMED', 'WAITLISTED'] } },
-      include: { user: true },
+      include: { user: true, boardedBy: { select: { name: true } } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
     const counts = await waitlistCounts(ctx.prisma, [tripId]);
@@ -709,6 +719,8 @@ export function adminRouter(ctx: AppContext) {
         idType: b.idType as IdType,
         idTypeDetail: b.idTypeDetail,
         idNumber: fullIdNumber(b, b.user.providerSubject),
+        boardedAt: b.boardedAt?.toISOString() ?? null,
+        boardedByName: b.boardedBy?.name ?? null,
       })),
       waitlist: waiting.map((b, i) => ({
         position: i + 1,
@@ -722,14 +734,17 @@ export function adminRouter(ctx: AppContext) {
   r.get('/trips/:tripId/manifest', async (req, res) => {
     const tripId = idParam.parse(req.params.tripId);
     const manifest = await buildManifest(tripId);
-    await audit(ctx.prisma, {
-      actorUserId: req.auth!.user.id,
-      action: 'MANIFEST_VIEWED',
-      targetType: 'Trip',
-      targetId: tripId,
-      metadata: { passengers: manifest.passengers.length },
-    });
-    res.json(manifest);
+    // The passenger list polls while people are boarding. Only the first open is audited.
+    if (req.query.live !== '1') {
+      await audit(ctx.prisma, {
+        actorUserId: req.auth!.user.id,
+        action: 'MANIFEST_VIEWED',
+        targetType: 'Trip',
+        targetId: tripId,
+        metadata: { passengers: manifest.passengers.length },
+      });
+    }
+    res.set('Cache-Control', 'no-store').json(manifest);
   });
 
   r.get('/trips/:tripId/manifest.csv', async (req, res) => {
@@ -751,6 +766,8 @@ export function adminRouter(ctx: AppContext) {
       'ID number',
       'Guest of',
       'Booking reference',
+      'Boarded at (IST)',
+      'Scanned by',
     ];
     const lines = m.passengers.map((p) =>
       [
@@ -762,6 +779,8 @@ export function adminRouter(ctx: AppContext) {
         p.idNumber,
         p.passengerType === 'GUEST' ? p.bookedBy : '',
         p.reference,
+        p.boardedAt ? formatIst(p.boardedAt) : '',
+        p.boardedByName ?? '',
       ]
         .map(csvCell)
         .join(','),
@@ -772,6 +791,39 @@ export function adminRouter(ctx: AppContext) {
       .type('text/csv; charset=utf-8')
       .set('Content-Disposition', `attachment; filename="${file}"`)
       .send('﻿' + [csvCell(title), header.join(','), ...lines].join('\r\n') + '\r\n');
+  });
+
+  // ---- Live boarding and conductors ----
+
+  r.get('/boarding', async (req, res) => {
+    const q = boardingDateQuerySchema.parse(req.query);
+    const date = q.date ?? istDateOf(ctx.now());
+    res.set('Cache-Control', 'no-store').json(await liveBoarding(ctx.prisma, date));
+  });
+
+  r.get('/conductors', async (_req, res) => {
+    res.set('Cache-Control', 'no-store').json({ conductors: await listConductors(ctx.prisma) });
+  });
+
+  r.post('/conductors', async (req, res) => {
+    const { kerberosId } = conductorGrantSchema.parse(req.body);
+    const conductor = await grantConductor(ctx.prisma, {
+      kerberosId,
+      actor: req.auth!.user,
+      now: ctx.now(),
+    });
+    res.status(201).json({ conductor });
+  });
+
+  r.get('/conductors/:grantId', async (req, res) => {
+    const grantId = idParam.parse(req.params.grantId);
+    res.set('Cache-Control', 'no-store').json(await conductorHistory(ctx.prisma, grantId));
+  });
+
+  r.delete('/conductors/:grantId', async (req, res) => {
+    const grantId = idParam.parse(req.params.grantId);
+    await revokeConductor(ctx.prisma, { grantId, actor: req.auth!.user, now: ctx.now() });
+    res.json({ ok: true });
   });
 
   // ---- Users & blocks ----
@@ -828,7 +880,7 @@ export function adminRouter(ctx: AppContext) {
         name: u.name,
         email: u.email,
         subject: u.providerSubject,
-        role: u.role as 'USER' | 'ADMIN',
+        role: u.role as AdminUserDto['role'],
         lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
         activeBlock: u.blocks[0] ? toBlockDto(u.blocks[0]) : null,
       })),

@@ -37,6 +37,8 @@ describe('driver manifest', () => {
           bookedBy: 'Ravi',
           idType: 'IITD_ID',
           idNumber: 'cs1200001',
+          boardedAt: '2026-10-19T02:20:00.000Z',
+          boardedByName: 'Conductor',
         },
         {
           serial: 2,
@@ -48,6 +50,8 @@ describe('driver manifest', () => {
           bookedBy: 'Ravi',
           idType: 'PAN',
           idNumber: 'ABCDE1234F',
+          boardedAt: null,
+          boardedByName: null,
         },
       ],
       waitlist: [{ position: 1, reference: 'SNP-CCCC-CCCC', name: 'Wait Person', phone: null }],

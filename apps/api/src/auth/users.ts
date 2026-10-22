@@ -1,6 +1,7 @@
 import type { PrismaClient, User } from '@prisma/client';
 import type { Env } from '../config/env';
 import { audit } from '../lib/audit';
+import { syncConductorRole } from '../conductors/service';
 import type { ProviderIdentity } from './provider';
 
 export type EligibilityResult = { ok: true } | { ok: false; reason: string };
@@ -75,5 +76,5 @@ export async function upsertUserFromIdentity(
       },
     });
   }
-  return user;
+  return syncConductorRole(prisma, user, identity.subject);
 }

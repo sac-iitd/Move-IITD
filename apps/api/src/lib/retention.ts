@@ -16,6 +16,7 @@ export async function purgePersonalData(prisma: PrismaClient, now: Date, retenti
       passengerEmail: null,
       idNumberEnc: null,
       idTypeDetail: null,
+      boardingToken: null,
       piiPurgedAt: now,
     },
   });
