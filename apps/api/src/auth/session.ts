@@ -92,6 +92,10 @@ interface OAuthStatePayload {
   state: string;
   returnTo: string;
   exp: number;
+  /** PHP session at oauth2.iitd.ac.in, so the captcha and the login belong together. */
+  oauthSession?: string;
+  /** Captcha image on oauth2, fetched with oauthSession. Never taken from the browser. */
+  captchaUrl?: string;
 }
 
 function sign(env: Env, data: string): string {

@@ -1,10 +1,12 @@
 import { istDateOf } from '@iitd-bus/shared';
 import { activeBlockOn } from '../blocks/query';
 import { appUrl } from '../config/env';
-import { Router } from 'express';
+import express, { Router } from 'express';
 import type { MeResponse } from '@iitd-bus/shared';
 import type { AppContext } from '../context';
 import { DevMockAuthProvider, devMockAuthorizePage } from '../auth/dev-mock';
+import { KebrosAuthProvider } from '../auth/kebros';
+import { oauthLoginPage, openOAuthForm, submitOAuthForm } from '../auth/oauth-broker';
 import { requireAuth } from '../auth/middleware';
 import { AuthProviderError } from '../auth/provider';
 import {
@@ -33,23 +35,140 @@ export function authRouter(ctx: AppContext) {
   const { env } = ctx;
   const loginErrorUrl = (code: string) => `${appUrl(env)}/login?error=${encodeURIComponent(code)}`;
 
-  /** Begins sign-in: issues a signed state cookie and redirects to the identity provider. */
-  r.get('/login', authRateLimit(ctx), (req, res) => {
+  const setOAuthCookie = (
+    res: express.Response,
+    payload: { state: string; returnTo: string; oauthSession?: string; captchaUrl?: string },
+  ) => {
+    res.cookie(
+      oauthCookieName(env),
+      encodeOAuthState(env, { ...payload, exp: ctx.now().getTime() + STATE_TTL_MS }),
+      { ...baseCookieOptions(env), maxAge: STATE_TTL_MS },
+    );
+  };
+
+  /**
+   * Begins sign-in. The dev provider redirects to its own page. Kerberos is shown
+   * here: IIT Delhi rejects the password form unless the POST Referer is the SAC
+   * site, and their form lives on oauth2.iitd.ac.in.
+   */
+  r.get('/login', authRateLimit(ctx), async (req, res) => {
     const state = randomToken(32);
     const returnTo = sanitizeReturnTo(req.query.returnTo);
-    const value = encodeOAuthState(env, {
-      state,
-      returnTo,
-      exp: ctx.now().getTime() + STATE_TTL_MS,
-    });
-    res.cookie(oauthCookieName(env), value, { ...baseCookieOptions(env), maxAge: STATE_TTL_MS });
-    // IITD rejects authorize.php unless the browser's Referer starts with the
-    // registered Server URI (https://sac.iitd.ac.in). The API's default
-    // Referrer-Policy is no-referrer, which strips it on this redirect and
-    // sends the user back to the SAC homepage instead of the Kerberos login.
-    res.set('Referrer-Policy', 'origin');
-    res.redirect(302, ctx.authProvider.authorizationUrl(state));
+    if (!(ctx.authProvider instanceof KebrosAuthProvider) || !env.KEBROS_REDIRECT_URI) {
+      setOAuthCookie(res, { state, returnTo });
+      res.set('Referrer-Policy', 'origin');
+      res.redirect(302, ctx.authProvider.authorizationUrl(state));
+      return;
+    }
+    try {
+      const form = await openOAuthForm(
+        fetch,
+        ctx.authProvider.authorizationUrl(state),
+        `${appUrl(env)}/`,
+        env.KEBROS_TIMEOUT_MS,
+      );
+      setOAuthCookie(res, {
+        state,
+        returnTo,
+        oauthSession: form.phpSession,
+        captchaUrl: form.captchaUrl,
+      });
+      res
+        .set(
+          'Content-Security-Policy',
+          "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        )
+        .set('Referrer-Policy', 'origin')
+        .set('Cache-Control', 'no-store')
+        .type('html')
+        .send(
+          oauthLoginPage({
+            failed: req.query.again === '1',
+            formAction: 'oauth-submit',
+            captchaSrc: 'oauth-captcha',
+          }),
+        );
+    } catch (err) {
+      req.log.warn(
+        { detail: err instanceof Error ? err.message : 'unavailable' },
+        'Could not open Kerberos sign-in',
+      );
+      res.redirect(302, loginErrorUrl('provider_unavailable'));
+    }
   });
+
+  r.get('/oauth-captcha', authRateLimit(ctx), async (req, res) => {
+    const stored = decodeOAuthState(env, req.cookies?.[oauthCookieName(env)], ctx.now());
+    if (!stored?.oauthSession || !stored.captchaUrl) {
+      res.status(400).type('text').send('Sign-in expired. Go back and try again.');
+      return;
+    }
+    const image = await fetch(stored.captchaUrl, {
+      headers: { Cookie: `PHPSESSID=${stored.oauthSession}`, Accept: 'image/*' },
+      signal: AbortSignal.timeout(env.KEBROS_TIMEOUT_MS),
+    });
+    if (!image.ok) {
+      res.status(502).type('text').send('Captcha could not be loaded.');
+      return;
+    }
+    const bytes = Buffer.from(await image.arrayBuffer());
+    res
+      .status(200)
+      .set('Cache-Control', 'no-store')
+      .type(image.headers.get('content-type') ?? 'image/png')
+      .send(bytes);
+  });
+
+  r.post(
+    '/oauth-submit',
+    authRateLimit(ctx),
+    express.urlencoded({ extended: false, limit: '1kb' }),
+    async (req, res) => {
+      const stored = decodeOAuthState(env, req.cookies?.[oauthCookieName(env)], ctx.now());
+      const retry = () => {
+        const back = stored?.returnTo ?? '/dashboard';
+        res.redirect(302, `login?returnTo=${encodeURIComponent(back)}&again=1`);
+      };
+      if (
+        !(ctx.authProvider instanceof KebrosAuthProvider) ||
+        !env.KEBROS_REDIRECT_URI ||
+        !stored?.oauthSession
+      ) {
+        retry();
+        return;
+      }
+      const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      const captcha = typeof req.body?.captcha === 'string' ? req.body.captcha.trim() : '';
+      if (!username || !password || !captcha) {
+        retry();
+        return;
+      }
+      try {
+        const result = await submitOAuthForm(fetch, {
+          authorizeUrl: ctx.authProvider.authorizationUrl(stored.state),
+          referer: `${appUrl(env)}/`,
+          redirectUri: env.KEBROS_REDIRECT_URI,
+          phpSession: stored.oauthSession,
+          username,
+          password,
+          captcha,
+          timeoutMs: env.KEBROS_TIMEOUT_MS,
+        });
+        if (!result.redirectTo) {
+          retry();
+          return;
+        }
+        res.redirect(302, result.redirectTo);
+      } catch (err) {
+        req.log.warn(
+          { detail: err instanceof Error ? err.message : 'unavailable' },
+          'Kerberos sign-in could not be forwarded',
+        );
+        retry();
+      }
+    },
+  );
 
   /** Provider redirect target (the registered Redirect URI). */
   r.get('/callback', authRateLimit(ctx), async (req, res) => {
